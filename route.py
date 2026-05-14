@@ -168,6 +168,6 @@ else:
             st.session_state['logout_token'] = True
             
         st.button("🚪 Cerrar Sesión", use_container_width=True, on_click=handle_logout)
-        st.markdown("<br><div style='color:#94A3B8;font-size:0.75em;text-align:center'>KFG Risk Architect v32.0<br>Multipage Architecture</div>", unsafe_allow_html=True)
+        st.markdown("<br><div style='color:#94A3B8;font-size:0.75em;text-align:center'>Kaizen apps<br>Multipage Architecture</div>", unsafe_allow_html=True)
     
     pg.run()

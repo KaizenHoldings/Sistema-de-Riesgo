@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date
-from database.daos import ExpedienteCorporativoDAO, ExpedienteAutomotrizDAO
+from database.daos_sqlserver import ExpedienteCorporativoDAO, ExpedienteAutomotrizDAO
 from utils import APP_ICONS
 from services.auth_service import AuthService
 
