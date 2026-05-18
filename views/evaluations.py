@@ -16,7 +16,7 @@ def modal_aprobar(r, tipo, tasa, plazo):
     st.write(f"Se procederá a registrar la decisión final y generar el plan de amortización.")
     st.info(f"**Monto:** {r['moneda']} {r['monto']:,.2f}  \n**Tasa:** {tasa}%  \n**Plazo:** {plazo} meses")
     
-    if st.button("Confirmar Firma y Proceder", type="primary", use_container_width=True):
+    if st.button("Confirmar Firma y Proceder", type="primary", width='stretch'):
         with st.spinner("Registrando decisión y generando plan de amortización..."):
             fh = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             if tipo == 'corp':
@@ -44,7 +44,7 @@ def modal_rechazar(r, tipo):
     st.error(f"### ¿Está seguro de RECHAZAR a {r['cliente']}?")
     st.write("Esta acción es irreversible y el expediente quedará marcado como rechazado.")
     
-    if st.button("Confirmar Rechazo Definitivo", type="primary", use_container_width=True):
+    if st.button("Confirmar Rechazo Definitivo", type="primary", width='stretch'):
         with st.spinner("Procesando rechazo..."):
             fh = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             if tipo == 'corp':
@@ -126,7 +126,17 @@ def show():
 
     st.markdown("---")
 
-    tab_corp, tab_auto = st.tabs(["Créditos Corporativos", "Créditos Automotrices"])
+    # ── Cálculo de expedientes LISTOS para Comité (3 firmas) ──
+    listos_c = df_corp[(df_corp['status_comp']==1)&(df_corp['status_leg']==1)&(df_corp['status_riesgo']==1)&(df_corp['dictamen']=='PENDIENTE')] if not df_corp.empty else pd.DataFrame()
+    listos_a = df_auto[(df_auto['status_comp']==1)&(df_auto['status_leg']==1)&(df_auto['status_riesgo']==1)&(df_auto['dictamen']=='PENDIENTE')] if not df_auto.empty else pd.DataFrame()
+    
+    count_corp_listos = len(listos_c)
+    count_auto_listos = len(listos_a)
+
+    label_corp = f"* **Créditos Corporativos ({count_corp_listos})**" if count_corp_listos > 0 else "Créditos Corporativos"
+    label_auto = f"* **Créditos Automotrices ({count_auto_listos})**" if count_auto_listos > 0 else "Créditos Automotrices"
+
+    tab_corp, tab_auto = st.tabs([label_corp, label_auto])
 
     # Panel Corporativo
     with tab_corp:
@@ -182,15 +192,15 @@ def show():
                                 plazo_c_ap = ic2.number_input("Meses", min_value=1, value=int(r.get('plazo_meses', 36)), key=f"c_plz_{r['id']}")
                                 
                                 btn_col1, btn_col2 = st.columns(2)
-                                if btn_col1.button("✅ Aprobar", key=f"c_ap_{r['id']}", disabled=not listo, use_container_width=True):
+                                if btn_col1.button("✅ Aprobar", key=f"c_ap_{r['id']}", disabled=not listo, width='stretch'):
                                     modal_aprobar(r, 'corp', t_ap, plazo_c_ap)
-                                if btn_col2.button("❌ Rechazar", key=f"c_rj_{r['id']}", use_container_width=True):
+                                if btn_col2.button("❌ Rechazar", key=f"c_rj_{r['id']}", width='stretch'):
                                     modal_rechazar(r, 'corp')
                             else:
                                 act_col1, act_col2 = st.columns([3, 1])
                                 pdf_key = f"pdf_corp_{r['id']}"
                                 if pdf_key not in st.session_state:
-                                    if act_col1.button("📄 Generar Acta", key=f"c_gen_pdf_{r['id']}", use_container_width=True):
+                                    if act_col1.button("📄 Generar Acta", key=f"c_gen_pdf_{r['id']}", width='stretch'):
                                         with st.spinner("Generando PDF..."):
                                             try:
                                                 st.session_state[pdf_key] = DocumentReportService.generar_pdf_corporativo(r)
@@ -198,9 +208,9 @@ def show():
                                             except Exception as e:
                                                 st.error("Error PDF")
                                 else:
-                                    act_col1.download_button("📥 Descargar Acta", st.session_state[pdf_key], f"Acta_{r['cliente']}.pdf", "application/pdf", key=f"c_pdf_{r['id']}", use_container_width=True)
+                                    act_col1.download_button("📥 Descargar Acta", st.session_state[pdf_key], f"Acta_{r['cliente']}.pdf", "application/pdf", key=f"c_pdf_{r['id']}", width='stretch')
                                 
-                                if act_col2.button("🗑️", key=f"c_del_{r['id']}", use_container_width=True):
+                                if act_col2.button("🗑️", key=f"c_del_{r['id']}", width='stretch'):
                                     db_action("DELETE FROM expedientes_wf WHERE id=?", (r['id'],))
                                     st.rerun()
                             
@@ -219,7 +229,7 @@ def show():
                                     pp3.metric("Total a Pagar", f"${df_pp['cuota'].sum():,.2f}")
                                     df_show = df_pp[['periodo', 'fecha_pago', 'cuota', 'capital', 'interes', 'saldo']].copy()
                                     df_show.columns = ['N°', 'Fecha', 'Cuota', 'Capital', 'Interés', 'Saldo']
-                                    st.dataframe(df_show.style.format({'Cuota': '${:,.2f}', 'Capital': '${:,.2f}', 'Interés': '${:,.2f}', 'Saldo': '${:,.2f}'}), use_container_width=True, hide_index=True)
+                                    st.dataframe(df_show.style.format({'Cuota': '${:,.2f}', 'Capital': '${:,.2f}', 'Interés': '${:,.2f}', 'Saldo': '${:,.2f}'}), width='stretch', hide_index=True)
 
     # Panel Automotriz
     with tab_auto:
@@ -279,16 +289,16 @@ def show():
                                 iac2.number_input("Meses", value=p_auto_val, key=f"ca_plz_show_{r['id']}", disabled=True)
                                 
                                 abtn_col1, abtn_col2 = st.columns(2)
-                                if abtn_col1.button("✅ Aprobar", key=f"ca_ap_{r['id']}", disabled=not listo_a, use_container_width=True):
+                                if abtn_col1.button("✅ Aprobar", key=f"ca_ap_{r['id']}", disabled=not listo_a, width='stretch'):
                                     p_auto = int(r.get('plazo_meses', 48))
                                     modal_aprobar(r, 'auto', t_ap_a, p_auto)
-                                if abtn_col2.button("❌ Rechazar", key=f"ca_rj_{r['id']}", use_container_width=True):
+                                if abtn_col2.button("❌ Rechazar", key=f"ca_rj_{r['id']}", width='stretch'):
                                     modal_rechazar(r, 'auto')
                             else:
                                 act_col1_a, act_col2_a = st.columns([3, 1])
                                 pdf_key_a = f"pdf_auto_{r['id']}"
                                 if pdf_key_a not in st.session_state:
-                                    if act_col1_a.button("📄 Generar Acta", key=f"ca_gen_pdf_{r['id']}", use_container_width=True):
+                                    if act_col1_a.button("📄 Generar Acta", key=f"ca_gen_pdf_{r['id']}", width='stretch'):
                                         with st.spinner("Generando PDF..."):
                                             try:
                                                 st.session_state[pdf_key_a] = DocumentReportService.generar_pdf_auto(r)
@@ -296,9 +306,9 @@ def show():
                                             except Exception as e:
                                                 st.error("Error PDF")
                                 else:
-                                    act_col1_a.download_button("📥 Descargar Acta", st.session_state[pdf_key_a], f"Acta_{r['cliente']}.pdf", "application/pdf", key=f"ca_pdf_{r['id']}", use_container_width=True)
+                                    act_col1_a.download_button("📥 Descargar Acta", st.session_state[pdf_key_a], f"Acta_{r['cliente']}.pdf", "application/pdf", key=f"ca_pdf_{r['id']}", width='stretch')
                                 
-                                if act_col2_a.button("🗑️", key=f"ca_del_{r['id']}", use_container_width=True):
+                                if act_col2_a.button("🗑️", key=f"ca_del_{r['id']}", width='stretch'):
                                     db_action("DELETE FROM expedientes_auto WHERE id=?", (r['id'],))
                                     st.rerun()
                             
@@ -318,4 +328,4 @@ def show():
                                     ap4.metric("Total a Pagar", f"${df_pp['cuota'].sum():,.2f}")
                                     df_show = df_pp[['periodo', 'fecha_pago', 'cuota', 'capital', 'interes', 'saldo']].copy()
                                     df_show.columns = ['N°', 'Fecha', 'Cuota', 'Capital', 'Interés', 'Saldo']
-                                    st.dataframe(df_show.style.format({'Cuota': '${:,.2f}', 'Capital': '${:,.2f}', 'Interés': '${:,.2f}', 'Saldo': '${:,.2f}'}), use_container_width=True, hide_index=True)
+                                    st.dataframe(df_show.style.format({'Cuota': '${:,.2f}', 'Capital': '${:,.2f}', 'Interés': '${:,.2f}', 'Saldo': '${:,.2f}'}), width='stretch', hide_index=True)

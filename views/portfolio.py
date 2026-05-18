@@ -99,7 +99,7 @@ def show():
             top10.columns = ['Cliente', 'Exposición Total']
             top10['Exposición Total'] = top10['Exposición Total'].apply(lambda x: f"${x:,.2f}")
             top10.insert(0, '#', range(1, len(top10)+1))
-            st.dataframe(top10, use_container_width=True, hide_index=True)
+            st.dataframe(top10, width='stretch', hide_index=True)
 
         st.divider()
         # Estado de cobranza
@@ -156,7 +156,7 @@ def show():
                         st.dataframe(cred_corp[show_c].rename(columns={
                             'id':'ID','fecha':'Fecha','monto':'Monto','moneda':'Moneda',
                             'dictamen':'Estado','tasa_aprobada':'Tasa %','score_f':'Score'}),
-                            use_container_width=True, hide_index=True)
+                            width='stretch', hide_index=True)
                     if not cred_auto.empty:
                         st.markdown("**Créditos Automotrices**")
                         cols_a = ['id','fecha','monto','moneda','marca','modelo','anio','dictamen','tasa_aprobada','score_f']
@@ -165,7 +165,7 @@ def show():
                             'id':'ID','fecha':'Fecha','monto':'Monto','moneda':'Moneda',
                             'marca':'Marca','modelo':'Modelo','anio':'Año',
                             'dictamen':'Estado','tasa_aprobada':'Tasa %','score_f':'Score'}),
-                            use_container_width=True, hide_index=True)
+                            width='stretch', hide_index=True)
                     if cred_corp.empty and cred_auto.empty:
                         st.info("Sin créditos registrados.")
 
@@ -196,7 +196,7 @@ def show():
                         disp_pp_pag = paginate_dataframe(disp_pp, page_size=10, key_prefix="port_pp")
                         st.dataframe(
                             disp_pp_pag.style.format({'Cuota':'${:,.2f}','Capital':'${:,.2f}','Interés':'${:,.2f}','Saldo':'${:,.2f}'}),
-                            use_container_width=True, hide_index=True)
+                            width='stretch', hide_index=True)
 
                 with v3_t3:
                     all_ids = [(i,'corp') for i in ids_c] + [(i,'auto') for i in ids_a]
@@ -215,7 +215,7 @@ def show():
                         st.dataframe(gest_cli_pag.rename(columns={
                             'fecha':'Fecha','tipo_gestion':'Gestión','responsable':'Responsable',
                             'resultado':'Resultado','proxima_accion':'Próx. Acción','obs':'Observaciones'}),
-                            use_container_width=True, hide_index=True)
+                            width='stretch', hide_index=True)
 
     # ────────────── TAB 3: FLUJO DE CAJA ─────────────────
     with cart_tab3:
@@ -249,7 +249,7 @@ def show():
                 st.dataframe(venc_det_pag.rename(columns={
                     'expediente_id':'ID Exp.','tipo_expediente':'Tipo','periodo':'N°',
                     'fecha_pago':'Fecha','cuota':'Cuota','dias_atraso':'Días Atraso'}
-                ).style.format({'Cuota':'${:,.2f}'}), use_container_width=True, hide_index=True)
+                ).style.format({'Cuota':'${:,.2f}'}), width='stretch', hide_index=True)
             else:
                 st.success("✅ No hay cuotas vencidas.")
 

@@ -1,14 +1,14 @@
 import streamlit as st
 import pandas as pd
 from utils import page_header, section_divider, paginate_dataframe, APP_ICONS
-from database.daos_sqlserver import ExpedienteCorporativoDAO, ExpedienteAutomotrizDAO
+from database.daos_sqlserver import ExpedienteCorporativoDAO, ExpedienteAutomotrizDAO, ClienteDAO
 
 @st.dialog("Confirmar Certificación")
 def modal_certificar_comp(r, tipo, data):
     st.markdown(f"### ¿Confirmar certificación para **{r['cliente']}**?")
     st.write("Al certificar, usted confirma que ha realizado la debida diligencia AML/CFT.")
     
-    if st.button("Confirmar Firma y Certificar", type="primary", use_container_width=True):
+    if st.button("Confirmar Firma y Certificar", type="primary", width='stretch'):
         with st.spinner("Registrando certificación..."):
             if tipo == 'corp':
                 ExpedienteCorporativoDAO.update_compliance(
@@ -41,18 +41,24 @@ def show():
                 
     # ── Carga de datos aislada (Consumiendo DAOs) ──
     with st.spinner("Cargando expedientes para revisión..."):
-        df_corp = ExpedienteCorporativoDAO.get_all_as_df()
-        df_auto = ExpedienteAutomotrizDAO.get_all_as_df()
+        df_corp_raw = ExpedienteCorporativoDAO.get_all_as_df()
+        df_auto_raw = ExpedienteAutomotrizDAO.get_all_as_df()
 
-    tab_corp, tab_auto = st.tabs(["Créditos Corporativos", "Créditos Automotrices"])
+        # Filtrar pendientes ANTES de declarar las pestañas
+        df_c = df_corp_raw[(df_corp_raw['status_comp'] == 0) & (df_corp_raw['dictamen'] == 'PENDIENTE')] if not df_corp_raw.empty else pd.DataFrame()
+        df_ca = df_auto_raw[(df_auto_raw['status_comp'] == 0) & (df_auto_raw['dictamen'] == 'PENDIENTE')] if not df_auto_raw.empty else pd.DataFrame()
+
+        count_corp = len(df_c)
+        count_auto = len(df_ca)
+
+    # ── Títulos dinámicos con Negrita y Asterisco ──
+    label_corp = f"* **Créditos Corporativos ({count_corp})**" if count_corp > 0 else "Créditos Corporativos"
+    label_auto = f"* **Créditos Automotrices ({count_auto})**" if count_auto > 0 else "Créditos Automotrices"
+
+    tab_corp, tab_auto = st.tabs([label_corp, label_auto])
 
     # ── Sección: Corporativos ──
     with tab_corp:
-        if not df_corp.empty:
-            df_c = df_corp[(df_corp['status_comp'] == 0) & (df_corp['dictamen'] == 'PENDIENTE')]
-        else:
-            df_c = pd.DataFrame()
-
         if df_c.empty:
             st.info("No hay expedientes corporativos pendientes de Cumplimiento.")
         else:
@@ -80,11 +86,6 @@ def show():
 
     # ── Sección: Automotrices ──
     with tab_auto:
-        if not df_auto.empty:
-            df_ca = df_auto[(df_auto['status_comp'] == 0) & (df_auto['dictamen'] == 'PENDIENTE')]
-        else:
-            df_ca = pd.DataFrame()
-
         if df_ca.empty:
             st.info("No hay expedientes automotrices pendientes de Cumplimiento.")
         else:
@@ -95,10 +96,18 @@ def show():
                     st.markdown("**Datos Laborales del Solicitante:**")
                     a1, a2, a3 = st.columns(3)
                     
-                    # Prevenir valores nulos de la BBDD
-                    val_ocu = "" if pd.isna(r['ocupacion']) else str(r['ocupacion'])
-                    val_emp = "" if pd.isna(r['empleador']) else str(r['empleador'])
-                    val_tel = "" if pd.isna(r['telefono']) else str(r['telefono'])
+                    # Prevenir valores nulos de la BBDD y precargar de cliente si está vinculado
+                    cli = ClienteDAO.get_by_id(r.get('cliente_id'))
+                    
+                    val_ocu = str(r['ocupacion']) if pd.notna(r['ocupacion']) and str(r['ocupacion']).strip() else ""
+                    if not val_ocu and cli:
+                        val_ocu = cli.get('actividad_economica', '')
+                        
+                    val_emp = str(r['empleador']) if pd.notna(r['empleador']) and str(r['empleador']).strip() else ""
+                    
+                    val_tel = str(r['telefono']) if pd.notna(r['telefono']) and str(r['telefono']).strip() else ""
+                    if not val_tel and cli:
+                        val_tel = cli.get('telefono', '')
                     
                     ocu = a1.text_input("Ocupación", value=val_ocu, key=f"ca_ocu_{r['id']}")
                     emp = a2.text_input("Empleador", value=val_emp, key=f"ca_emp_{r['id']}")

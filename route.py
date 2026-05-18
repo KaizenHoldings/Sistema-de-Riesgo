@@ -43,30 +43,37 @@ else:
         
     # (Modal de solicitud antiguo eliminado, ahora es una vista completa)
 
-    # ── Contadores Originales del Monolito ──
-    # Extraemos los datos a través de los DAOs para respetar la arquitectura
-    with st.spinner("Sincronizando expedientes..."):
-   
-        df_corp = ExpedienteCorporativoDAO.get_all_as_df()
-        df_auto = ExpedienteAutomotrizDAO.get_all_as_df()
-        
-        def _p(df, col): 
-            if df.empty: return 0
-            return len(df[(df[col] == 0) & (df['dictamen'] == 'PENDIENTE')])
+    # ── Contadores Optimizados (Caché de 30s) ──
+    @st.cache_data(ttl=30)
+    def get_sidebar_metrics():
 
-        n_comp  = _p(df_corp, 'status_comp')  + _p(df_auto, 'status_comp')
-        n_leg   = _p(df_corp, 'status_leg')   + _p(df_auto, 'status_leg')
-        n_ries  = _p(df_corp, 'status_riesgo')+ _p(df_auto, 'status_riesgo')
+
+        # Cumplimiento: dictamen PENDIENTE y status_comp 0
+        n_comp = ExpedienteCorporativoDAO.count(dictamen='PENDIENTE', status_comp=0) + \
+                 ExpedienteAutomotrizDAO.count(dictamen='PENDIENTE', status_comp=0)
         
-        listos_c = df_corp[(df_corp['status_comp']==1)&(df_corp['status_leg']==1)&(df_corp['status_riesgo']==1)&(df_corp['dictamen']=='PENDIENTE')] if not df_corp.empty else []
-        listos_a = df_auto[(df_auto['status_comp']==1)&(df_auto['status_leg']==1)&(df_auto['status_riesgo']==1)&(df_auto['dictamen']=='PENDIENTE')] if not df_auto.empty else []
-        n_comite = len(listos_c) + len(listos_a)
+        # Legal: dictamen PENDIENTE y status_leg 0
+        n_leg = ExpedienteCorporativoDAO.count(dictamen='PENDIENTE', status_leg=0) + \
+                ExpedienteAutomotrizDAO.count(dictamen='PENDIENTE', status_leg=0)
+        
+        # Riesgo: dictamen PENDIENTE y status_riesgo 0
+        n_ries = ExpedienteCorporativoDAO.count(dictamen='PENDIENTE', status_riesgo=0) + \
+                 ExpedienteAutomotrizDAO.count(dictamen='PENDIENTE', status_riesgo=0)
+        
+        # Comité: dictamen PENDIENTE y todos los status aprobados (1)
+        n_comite = ExpedienteCorporativoDAO.count(dictamen='PENDIENTE', status_comp=1, status_leg=1, status_riesgo=1) + \
+                   ExpedienteAutomotrizDAO.count(dictamen='PENDIENTE', status_comp=1, status_leg=1, status_riesgo=1)
+        
+        # Cobranzas: Plan de pagos PENDIENTE con fecha vencida
+        hoy_str = datetime.now().strftime("%Y-%m-%d")
+        n_venc = PlanPagoDAO.count_vencidos(hoy_str)
+        
+        return n_comp, n_leg, n_ries, n_comite, n_venc
+    
+    with st.spinner("Sincronizando indicadores..."):
+        n_comp, n_leg, n_ries, n_comite, n_venc = get_sidebar_metrics()
     
     def cnt(n): return f" **{n}**" if n > 0 else ""
-    
-    hoy_str = datetime.now().strftime("%Y-%m-%d")
-    df_plan = PlanPagoDAO.get_all_as_df()
-    n_venc = len(df_plan[(df_plan['estado'] == 'PENDIENTE') & (df_plan['fecha_pago'] < hoy_str)]) if not df_plan.empty else 0
 
     # ── Vistas a registrar (Lazy Loading) ──
     def show_dashboard(): from views import dashboard; dashboard.show()
@@ -141,7 +148,7 @@ else:
 
         # 2. Botón de Agregar Nueva Solicitud (ARRIBA de las rutas)
         st.markdown('<span class="btn-solicitud-hook" style="display:none;"></span>', unsafe_allow_html=True)
-        if st.button("Agregar Nueva Solicitud", use_container_width=True):
+        if st.button("Agregar Nueva Solicitud", width='stretch'):
             st.switch_page(p_nueva_solicitud)
             
         st.markdown("<hr style='border-color:rgba(255,255,255,0.15); margin:12px 0;'>", unsafe_allow_html=True)
@@ -167,7 +174,7 @@ else:
                     del st.session_state[key]
             st.session_state['logout_token'] = True
             
-        st.button("🚪 Cerrar Sesión", use_container_width=True, on_click=handle_logout)
+        st.button("🚪 Cerrar Sesión", width='stretch', on_click=handle_logout)
         st.markdown("<br><div style='color:#94A3B8;font-size:0.75em;text-align:center'>Kaizen apps<br>Multipage Architecture</div>", unsafe_allow_html=True)
     
     pg.run()

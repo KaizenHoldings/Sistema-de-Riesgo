@@ -155,7 +155,7 @@ def show():
         recent = pd.concat(frames).sort_values('fecha', ascending=False).head(8)
         recent.columns = ['Tipo','Fecha','Cliente','Monto','Estado']
         recent['Monto'] = recent['Monto'].apply(lambda x: f"${float(x):,.0f}")
-        st.dataframe(recent, use_container_width=True, hide_index=True)
+        st.dataframe(recent, width='stretch', hide_index=True)
     else:
         st.info("Sin actividad registrada aún.")
     
@@ -169,7 +169,7 @@ def show():
         if not df_corp.empty:
             resumen_c = df_corp['dictamen'].value_counts().reset_index()
             resumen_c.columns = ['Estado','Expedientes']
-            st.dataframe(resumen_c, use_container_width=True, hide_index=True)
+            st.dataframe(resumen_c, width='stretch', hide_index=True)
         else:
             st.info("Sin expedientes corporativos.")
     with s2:
@@ -177,6 +177,6 @@ def show():
         if not df_auto.empty:
             resumen_a = df_auto['dictamen'].value_counts().reset_index()
             resumen_a.columns = ['Estado','Expedientes']
-            st.dataframe(resumen_a, use_container_width=True, hide_index=True)
+            st.dataframe(resumen_a, width='stretch', hide_index=True)
         else:
             st.info("Sin expedientes automotrices.")

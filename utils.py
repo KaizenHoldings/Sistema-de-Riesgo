@@ -147,6 +147,26 @@ html, body {
     border-color: rgba(255,255,255,0.25) !important; color: #FFFFFF !important;
 }
 
+/* ── Forzar Opacidad en Carga (Evitar que se ponga opaco/transparente) ── */
+[data-testid="stSidebar"] {
+    opacity: 1 !important;
+}
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div {
+    opacity: 1 !important;
+    filter: none !important;
+}
+/* Anular el efecto de "stale" (procesando) de Streamlit */
+[data-testid="stSidebar"] [data-stale="true"] {
+    opacity: 1 !important;
+    filter: none !important;
+}
+/* Asegurar que los enlaces y botones no se atenúen */
+[data-testid="stSidebar"] a, 
+[data-testid="stSidebar"] button, 
+[data-testid="stSidebar"] .stPageLink {
+    opacity: 1 !important;
+}
+
 /* ── Tabs — flat underline style ── */
 .stTabs [data-baseweb="tab-list"] {
     gap: 0; background: transparent;
@@ -815,7 +835,7 @@ def paginate_controls(total_items: int, page_size: int = 10, key_prefix: str = "
 
     with c_prev:
         if st.button("◀ Anterior", key=f"{key_prefix}_prev",
-                     use_container_width=True, disabled=(page <= 1)):
+                     width='stretch', disabled=(page <= 1)):
             st.session_state[page_key] -= 1
             st.rerun()
 
@@ -829,7 +849,7 @@ def paginate_controls(total_items: int, page_size: int = 10, key_prefix: str = "
 
     with c_next:
         if st.button("Siguiente ▶", key=f"{key_prefix}_next",
-                     use_container_width=True, disabled=(page >= total_pages)):
+                     width='stretch', disabled=(page >= total_pages)):
             st.session_state[page_key] += 1
             st.rerun()
 

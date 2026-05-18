@@ -99,8 +99,18 @@ def show():
     st.divider()
 
     # ── Panel por Crédito ─────────────────────────────
+    # ── Cálculo de cuotas VENCIDAS por tipo de cartera ──
+    venc_corp = df_plan[(df_plan['estado'] == 'PENDIENTE') & (df_plan['fecha_pago'] < hoy_s) & (df_plan['tipo_expediente'] == 'corp')] if not df_plan.empty else pd.DataFrame()
+    venc_auto = df_plan[(df_plan['estado'] == 'PENDIENTE') & (df_plan['fecha_pago'] < hoy_s) & (df_plan['tipo_expediente'] == 'auto')] if not df_plan.empty else pd.DataFrame()
+
+    count_venc_corp = len(venc_corp)
+    count_venc_auto = len(venc_auto)
+
+    label_cob_corp = f"* **Cartera Corporativa ({count_venc_corp})**" if count_venc_corp > 0 else "Cartera Corporativa"
+    label_cob_auto = f"* **Cartera Automotriz ({count_venc_auto})**" if count_venc_auto > 0 else "Cartera Automotriz"
+
     tab_cob_corp, tab_cob_auto, tab_gest = st.tabs(
-        ["Cartera Corporativa", "Cartera Automotriz", "Historial de Gestiones"])
+        [label_cob_corp, label_cob_auto, "Historial de Gestiones"])
 
     def _panel_cobranza(df_credits, tipo_exp, tipo_label):
         if df_credits.empty:
@@ -157,7 +167,7 @@ def show():
                         df_show.columns = ['N°','Fecha','Cuota','Capital','Interés','Saldo','Estado']
                         st.dataframe(
                             df_show.style.format({'Cuota':'${:,.2f}','Capital':'${:,.2f}','Interés':'${:,.2f}','Saldo':'${:,.2f}'}),
-                            use_container_width=True, hide_index=True)
+                            width='stretch', hide_index=True)
 
                 with st_cob2:
                     if df_cuotas.empty:
@@ -253,4 +263,4 @@ def show():
                           'fecha_proxima':'Fecha Próx.','obs':'Observaciones'}
             df_gf_pag = paginate_dataframe(df_gf, page_size=15, key_prefix="gestiones")
             st.dataframe(df_gf_pag[[c for c in show_cols if c in df_gf_pag.columns]].rename(columns=rename_map),
-                         use_container_width=True, hide_index=True)
+                         width='stretch', hide_index=True)

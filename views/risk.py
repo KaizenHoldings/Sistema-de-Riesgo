@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from utils import page_header, section_divider, paginate_dataframe, APP_ICONS
-from database.daos_sqlserver import ExpedienteCorporativoDAO, ExpedienteAutomotrizDAO, ConfigParametroDAO
+from database.daos_sqlserver import ExpedienteCorporativoDAO, ExpedienteAutomotrizDAO, ConfigParametroDAO, ClienteDAO
 
 @st.dialog("Confirmar Análisis de Riesgo")
 def modal_firmar_riesgo(r, tipo, data):
@@ -9,7 +9,7 @@ def modal_firmar_riesgo(r, tipo, data):
     st.write("Se registrarán los indicadores financieros y el score calculado para la evaluación final.")
     st.info(f"**Score:** {data['score']} / 10  \n**Tasa Sugerida:** {data['tasa']}%")
     
-    if st.button("Confirmar Firma de Riesgo", type="primary", use_container_width=True):
+    if st.button("Confirmar Firma de Riesgo", type="primary", width='stretch'):
         with st.spinner("Registrando análisis de riesgo y scoring..."):
             if tipo == 'corp':
                 ExpedienteCorporativoDAO.update_riesgo(
@@ -60,22 +60,29 @@ def show():
                 except ValueError: st.session_state[k] = v
                 
     with st.spinner("Cargando expedientes y modelos de scoring..."):
-        df_corp = ExpedienteCorporativoDAO.get_all_as_df()
-        df_auto = ExpedienteAutomotrizDAO.get_all_as_df()
+        df_corp_raw = ExpedienteCorporativoDAO.get_all_as_df()
+        df_auto_raw = ExpedienteAutomotrizDAO.get_all_as_df()
 
-    tab_corp, tab_auto = st.tabs(["Créditos Corporativos", "Créditos Automotrices"])
+        # Filtrar pendientes ANTES de declarar las pestañas
+        df_r = df_corp_raw[(df_corp_raw['status_riesgo'] == 0) & (df_corp_raw['dictamen'] == 'PENDIENTE')] if not df_corp_raw.empty else pd.DataFrame()
+        df_ra = df_auto_raw[(df_auto_raw['status_riesgo'] == 0) & (df_auto_raw['dictamen'] == 'PENDIENTE')] if not df_auto_raw.empty else pd.DataFrame()
+
+        count_corp = len(df_r)
+        count_auto = len(df_ra)
+
+    # ── Títulos dinámicos con Negrita y Asterisco ──
+    label_corp = f"* **Créditos Corporativos ({count_corp})**" if count_corp > 0 else "Créditos Corporativos"
+    label_auto = f"* **Créditos Automotrices ({count_auto})**" if count_auto > 0 else "Créditos Automotrices"
+
+    tab_corp, tab_auto = st.tabs([label_corp, label_auto])
 
     with tab_corp:
-        if not df_corp.empty:
-            df_r = df_corp[(df_corp['status_riesgo'] == 0) & (df_corp['dictamen'] == 'PENDIENTE')]
-        else:
-            df_r = pd.DataFrame()
-
         if df_r.empty:
             st.info("No hay expedientes corporativos pendientes en Riesgo.")
         else:
             df_r_pag = paginate_dataframe(df_r, page_size=10, key_prefix="risk_corp")
             for _, r in df_r_pag.iterrows():
+                cli = ClienteDAO.get_by_id(r.get('cliente_id'))
                 with st.expander(f"{r['cliente'].upper()} | RIF: {r['rif'].upper()} | ${r['monto']:,.2f}"):
                     st.markdown(f"#### {APP_ICONS['corporativo']} Análisis de Riesgo Financiero", unsafe_allow_html=True)
                     st.markdown("**1. Flujo de Caja (Capacidad de Pago)**")
@@ -134,16 +141,12 @@ def show():
                         modal_firmar_riesgo(r, 'corp', data_r)
 
     with tab_auto:
-        if not df_auto.empty:
-            df_ra = df_auto[(df_auto['status_riesgo'] == 0) & (df_auto['dictamen'] == 'PENDIENTE')]
-        else:
-            df_ra = pd.DataFrame()
-
         if df_ra.empty:
             st.info("No hay expedientes automotrices pendientes en Riesgo.")
         else:
             df_ra_pag = paginate_dataframe(df_ra, page_size=10, key_prefix="risk_auto")
             for _, r in df_ra_pag.iterrows():
+                cli = ClienteDAO.get_by_id(r.get('cliente_id'))
                 with st.expander(f"🚗 {r['cliente']} | {r['marca']} {r['modelo']} | ${r['monto']:,.2f}"):
                     st.markdown(f"#### {APP_ICONS['automotriz']} Evaluación de Capacidad de Pago", unsafe_allow_html=True)
                     st.markdown("**Resumen del Crédito:**")

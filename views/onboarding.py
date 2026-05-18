@@ -62,7 +62,7 @@ def show():
                 nc_fnac = date.today()
                 nc_nac  = ""
 
-            if st.form_submit_button("REGISTRAR CLIENTE", use_container_width=True, key="submit_button"):
+            if st.form_submit_button("REGISTRAR CLIENTE", width='stretch', key="submit_button"):
                 if nc_nom and nc_rif:
                     docs_init = json.dumps(
                         {d: False for d in (DOCS_NATURAL if tipo_cli=='Natural' else DOCS_JURIDICA)}
@@ -178,7 +178,7 @@ def show():
                     can_approve = role in ('Compliance','Superadmin')
                     if can_approve and cli['kyc_status'] in ('Prospecto','KYC Pendiente'):
                         if st.button("✅ Aprobar KYC", key=f"aprov_kyc_{cli['id']}",
-                                     use_container_width=True):
+                                     width='stretch'):
                             ClienteDAO.update_kyc_approval(
                                 cli['id'], obs_kyc_new, st.session_state.get('current_user', 'Admin'),
                                 datetime.now().strftime("%Y-%m-%d")
@@ -186,12 +186,12 @@ def show():
                             st.success("KYC Aprobado."); st.rerun()
                     elif cli['kyc_status'] == 'KYC Aprobado':
                         if st.button("🔄 Marcar como Activo", key=f"activo_{cli['id']}",
-                                     use_container_width=True):
+                                     width='stretch'):
                             ClienteDAO.update_kyc_status(cli['id'], 'Activo')
                             st.rerun()
 
                     if st.button("📝 Guardar Observaciones", key=f"save_obs_{cli['id']}",
-                                 use_container_width=True):
+                                 width='stretch'):
                         ClienteDAO.update_kyc_observations(cli['id'], obs_kyc_new)
                         st.success("Observaciones actualizadas."); st.rerun()
 

@@ -72,9 +72,9 @@ class ConfigParametroDAO:
 
 class ExpedienteCorporativoDAO:
     @staticmethod
-    def create(fecha, cliente, rif, monto):
-        db_action("INSERT INTO expedientes_wf (fecha, cliente, rif, monto) VALUES (:f, :c, :r, :m)",
-                  {"f": fecha, "c": cliente, "r": rif, "m": monto})
+    def create(fecha, cliente, rif, monto, cliente_id=None):
+        db_action("INSERT INTO expedientes_wf (fecha, cliente, rif, monto, cliente_id) VALUES (:f, :c, :r, :m, :cid)",
+                  {"f": fecha, "c": cliente, "r": rif, "m": monto, "cid": cliente_id})
 
     @staticmethod
     def get_all_as_df():
@@ -82,10 +82,20 @@ class ExpedienteCorporativoDAO:
         return pd.read_sql_query(text("SELECT * FROM expedientes_wf"), engine)
 
     @staticmethod
-    def count(dictamen: str = None, cliente: str = None) -> int:
+    def count(dictamen: str = None, cliente: str = None, 
+              status_comp: int = None, status_leg: int = None, status_riesgo: int = None) -> int:
         engine = get_connection()
-        where, params = _build_where({'dictamen': dictamen, 'cliente': cliente}, 'expedientes_wf')
+        filters = {
+            'dictamen': dictamen, 
+            'cliente': cliente,
+            'status_comp': status_comp,
+            'status_leg': status_leg,
+            'status_riesgo': status_riesgo
+        }
+        
+        where, params = _build_where(filters, 'expedientes_wf')
         with engine.connect() as conn:
+           
             res = conn.execute(text(f"SELECT COUNT(*) FROM expedientes_wf{where}"), params).fetchone()
             return res[0] if res else 0
 
@@ -143,9 +153,9 @@ class ExpedienteCorporativoDAO:
 
 class ExpedienteAutomotrizDAO:
     @staticmethod
-    def create(fecha, cliente, cedula, monto):
-        db_action("INSERT INTO expedientes_auto (fecha, cliente, cedula, monto) VALUES (:f, :c, :r, :m)",
-                  {"f": fecha, "c": cliente, "r": cedula, "m": monto})
+    def create(fecha, cliente, cedula, monto, cliente_id=None):
+        db_action("INSERT INTO expedientes_auto (fecha, cliente, cedula, monto, cliente_id) VALUES (:f, :c, :r, :m, :cid)",
+                  {"f": fecha, "c": cliente, "r": cedula, "m": monto, "cid": cliente_id})
 
     @staticmethod
     def get_all_as_df():
@@ -153,9 +163,17 @@ class ExpedienteAutomotrizDAO:
         return pd.read_sql_query(text("SELECT * FROM expedientes_auto"), engine)
 
     @staticmethod
-    def count(dictamen: str = None, cliente: str = None) -> int:
+    def count(dictamen: str = None, cliente: str = None,
+              status_comp: int = None, status_leg: int = None, status_riesgo: int = None) -> int:
         engine = get_connection()
-        where, params = _build_where({'dictamen': dictamen, 'cliente': cliente}, 'expedientes_auto')
+        filters = {
+            'dictamen': dictamen, 
+            'cliente': cliente,
+            'status_comp': status_comp,
+            'status_leg': status_leg,
+            'status_riesgo': status_riesgo
+        }
+        where, params = _build_where(filters, 'expedientes_auto')
         with engine.connect() as conn:
             res = conn.execute(text(f"SELECT COUNT(*) FROM expedientes_auto{where}"), params).fetchone()
             return res[0] if res else 0
@@ -280,6 +298,27 @@ class ClienteDAO:
     def update_kyc_observations(cli_id, obs_kyc):
         db_action("UPDATE clientes SET obs_kyc = :o WHERE id = :id", {"o": obs_kyc, "id": cli_id})
 
+    @staticmethod
+    def get_id_by_rif(rif):
+        engine = get_connection()
+        with engine.connect() as conn:
+            query = text("SELECT id FROM clientes WHERE cedula_rif = :r")
+            row = conn.execute(query, {"r": rif}).fetchone()
+            return row[0] if row else None
+
+    @staticmethod
+    def get_by_id(cli_id):
+        if pd.isna(cli_id) or cli_id is None:
+            return None
+        engine = get_connection()
+        with engine.connect() as conn:
+            query = text("SELECT * FROM clientes WHERE id = :id")
+            row = conn.execute(query, {"id": cli_id}).fetchone()
+            if row:
+                # Retornamos como diccionario para fácil acceso
+                return dict(row._mapping)
+        return None
+
 class PlanPagoDAO:
     @staticmethod
     def delete_by_expediente(exp_id, tipo):
@@ -354,6 +393,14 @@ class PlanPagoDAO:
         params['lim'] = page_size
         query = f"SELECT * FROM plan_pagos{where} ORDER BY fecha_pago OFFSET :off ROWS FETCH NEXT :lim ROWS ONLY"
         return pd.read_sql_query(text(query), engine, params=params)
+
+    @staticmethod
+    def count_vencidos(fecha_referencia: str) -> int:
+        engine = get_connection()
+        query = text("SELECT COUNT(*) FROM plan_pagos WHERE estado = 'PENDIENTE' AND fecha_pago < :f")
+        with engine.connect() as conn:
+            res = conn.execute(query, {"f": fecha_referencia}).fetchone()
+            return res[0] if res else 0
 
 class GestionCobranzaDAO:
     @staticmethod

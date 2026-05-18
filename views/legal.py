@@ -3,14 +3,14 @@ import pandas as pd
 import json
 from datetime import datetime, date, timedelta
 from utils import page_header, section_divider, paginate_dataframe, APP_ICONS
-from database.daos_sqlserver import ExpedienteCorporativoDAO, ExpedienteAutomotrizDAO
+from database.daos_sqlserver import ExpedienteCorporativoDAO, ExpedienteAutomotrizDAO, ClienteDAO
 
 @st.dialog("Confirmar Revisión Legal")
 def modal_firmar_legal(r, tipo, data):
     st.markdown(f"### ¿Confirmar revisión legal para **{r['cliente']}**?")
     st.write("Se registrarán los colaterales y la validación de documentación para este expediente.")
     
-    if st.button("Confirmar Firma Legal", type="primary", use_container_width=True):
+    if st.button("Confirmar Firma Legal", type="primary", width='stretch'):
         with st.spinner("Registrando colaterales y validación legal..."):
             if tipo == 'corp':
                 ExpedienteCorporativoDAO.update_legal(
@@ -52,22 +52,29 @@ def show():
                 "KFG Risk Architect · Legal")
                 
     with st.spinner("Cargando expedientes y garantías..."):
-        df_corp = ExpedienteCorporativoDAO.get_all_as_df()
-        df_auto = ExpedienteAutomotrizDAO.get_all_as_df()
+        df_corp_raw = ExpedienteCorporativoDAO.get_all_as_df()
+        df_auto_raw = ExpedienteAutomotrizDAO.get_all_as_df()
 
-    tab_corp, tab_auto = st.tabs(["Créditos Corporativos", "Créditos Automotrices"])
+        # Filtrar pendientes ANTES de declarar las pestañas
+        df_l = df_corp_raw[(df_corp_raw['status_leg'] == 0) & (df_corp_raw['dictamen'] == 'PENDIENTE')] if not df_corp_raw.empty else pd.DataFrame()
+        df_la = df_auto_raw[(df_auto_raw['status_leg'] == 0) & (df_auto_raw['dictamen'] == 'PENDIENTE')] if not df_auto_raw.empty else pd.DataFrame()
+
+        count_corp = len(df_l)
+        count_auto = len(df_la)
+
+    # ── Títulos dinámicos con Negrita y Asterisco ──
+    label_corp = f"* **Créditos Corporativos ({count_corp})**" if count_corp > 0 else "Créditos Corporativos"
+    label_auto = f"* **Créditos Automotrices ({count_auto})**" if count_auto > 0 else "Créditos Automotrices"
+
+    tab_corp, tab_auto = st.tabs([label_corp, label_auto])
 
     with tab_corp:
-        if not df_corp.empty:
-            df_l = df_corp[(df_corp['status_leg'] == 0) & (df_corp['dictamen'] == 'PENDIENTE')]
-        else:
-            df_l = pd.DataFrame()
-
         if df_l.empty:
             st.info("No hay expedientes corporativos pendientes en Legal.")
         else:
             df_l_pag = paginate_dataframe(df_l, page_size=10, key_prefix="leg_corp")
             for _, r in df_l_pag.iterrows():
+                cli = ClienteDAO.get_by_id(r.get('cliente_id'))
                 with st.expander(f"{r['cliente'].upper()} | RIF: {r['rif'].upper()} | ${r['monto']:,.2f}"):
                     st.markdown(f"#### {APP_ICONS['corporativo']} Revisión de Documentación Legal", unsafe_allow_html=True)
                     if f"g_list_{r['id']}" not in st.session_state:
@@ -108,16 +115,12 @@ def show():
                             modal_firmar_legal(r, 'corp', data_l)
 
     with tab_auto:
-        if not df_auto.empty:
-            df_la = df_auto[(df_auto['status_leg'] == 0) & (df_auto['dictamen'] == 'PENDIENTE')]
-        else:
-            df_la = pd.DataFrame()
-
         if df_la.empty:
             st.info("No hay expedientes automotrices pendientes en Legal.")
         else:
             df_la_pag = paginate_dataframe(df_la, page_size=10, key_prefix="leg_auto")
             for _, r in df_la_pag.iterrows():
+                cli = ClienteDAO.get_by_id(r.get('cliente_id'))
                 with st.expander(f"🚗 {r['cliente']} | {r['marca']} {r['modelo']} | ${r['monto']:,.2f}"):
                     st.markdown(f"#### {APP_ICONS['automotriz']} Análisis de Garantía Automotriz", unsafe_allow_html=True)
                     st.markdown("**Datos del Vehículo:**")

@@ -11,7 +11,7 @@ def show():
         st.subheader("Usuarios Registrados")
         try:
             df_users = UsuarioDAO.get_all_as_df()
-            st.dataframe(df_users, use_container_width=True, hide_index=True)
+            st.dataframe(df_users, width='stretch', hide_index=True)
         except Exception as e:
             st.error(f"Error cargando usuarios: {e}")
             
