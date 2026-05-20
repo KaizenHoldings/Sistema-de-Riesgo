@@ -311,7 +311,9 @@ button[data-testid="baseButton-primary"] {
 [data-testid="stFormSubmitButton"] button *,
 [data-testid="stFormSubmitButton"] button p,
 button[data-testid="baseButton-primary"] *,
-button[data-testid="baseButton-primary"] p {
+button[data-testid="baseButton-primary"] p,
+button[kind="primary"] *,
+button[kind="primary"] p {
     color: white !important;
     -webkit-text-fill-color: white !important;
 }

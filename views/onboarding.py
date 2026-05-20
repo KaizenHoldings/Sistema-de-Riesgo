@@ -150,7 +150,7 @@ def show():
                     st.progress(pct / 100,
                                 text=f"Documentos: {completados}/{total_docs} ({pct}%)")
 
-                    if st.button("💾 Guardar Documentos", key=f"save_docs_{cli['id']}"):
+                    if st.button("Guardar", key=f"save_docs_{cli['id']}"):
                         new_kyc = cli['kyc_status']
                         if new_kyc == 'Prospecto' and completados > 0:
                             new_kyc = 'KYC Pendiente'

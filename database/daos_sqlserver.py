@@ -72,9 +72,9 @@ class ConfigParametroDAO:
 
 class ExpedienteCorporativoDAO:
     @staticmethod
-    def create(fecha, cliente, rif, monto, cliente_id=None):
-        db_action("INSERT INTO expedientes_wf (fecha, cliente, rif, monto, cliente_id) VALUES (:f, :c, :r, :m, :cid)",
-                  {"f": fecha, "c": cliente, "r": rif, "m": monto, "cid": cliente_id})
+    def create(fecha, cliente, rif, monto, cliente_id=None, descripcion=""):
+        db_action("INSERT INTO expedientes_wf (fecha, cliente, rif, monto, cliente_id, descripcion) VALUES (:f, :c, :r, :m, :cid, :desc)",
+                  {"f": fecha, "c": cliente, "r": rif, "m": monto, "cid": cliente_id, "desc": descripcion})
 
     @staticmethod
     def get_all_as_df():
@@ -107,7 +107,7 @@ class ExpedienteCorporativoDAO:
         offset = (page - 1) * page_size
         params['off'] = offset
         params['lim'] = page_size
-        query = f"SELECT * FROM expedientes_wf{where} ORDER BY id DESC OFFSET :off ROWS FETCH NEXT :lim ROWS ONLY"
+        query = f"SELECT * FROM expedientes_wf{where} ORDER BY id ASC OFFSET :off ROWS FETCH NEXT :lim ROWS ONLY"
         return pd.read_sql_query(text(query), engine, params=params)
     
     @staticmethod
@@ -153,9 +153,9 @@ class ExpedienteCorporativoDAO:
 
 class ExpedienteAutomotrizDAO:
     @staticmethod
-    def create(fecha, cliente, cedula, monto, cliente_id=None):
-        db_action("INSERT INTO expedientes_auto (fecha, cliente, cedula, monto, cliente_id) VALUES (:f, :c, :r, :m, :cid)",
-                  {"f": fecha, "c": cliente, "r": cedula, "m": monto, "cid": cliente_id})
+    def create(fecha, cliente, cedula, monto, cliente_id=None, descripcion=""):
+        db_action("INSERT INTO expedientes_auto (fecha, cliente, cedula, monto, cliente_id, descripcion) VALUES (:f, :c, :r, :m, :cid, :desc)",
+                  {"f": fecha, "c": cliente, "r": cedula, "m": monto, "cid": cliente_id, "desc": descripcion})
 
     @staticmethod
     def get_all_as_df():
@@ -186,7 +186,7 @@ class ExpedienteAutomotrizDAO:
         offset = (page - 1) * page_size
         params['off'] = offset
         params['lim'] = page_size
-        query = f"SELECT * FROM expedientes_auto{where} ORDER BY id DESC OFFSET :off ROWS FETCH NEXT :lim ROWS ONLY"
+        query = f"SELECT * FROM expedientes_auto{where} ORDER BY id ASC OFFSET :off ROWS FETCH NEXT :lim ROWS ONLY"
         return pd.read_sql_query(text(query), engine, params=params)
     
     @staticmethod

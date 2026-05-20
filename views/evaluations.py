@@ -170,17 +170,24 @@ def show():
                         
                         # Columna 1: Info y Aprobador
                         with c1:
+                            desc_val = r.get('descripcion', '')
+                            desc_text = desc_val if desc_val and str(desc_val).strip().lower() != 'nan' and str(desc_val).strip() else 'Sin descripción'
+                            desc_html = f"<span style='font-size:0.85em;color:#334155;font-style:italic;'><strong>Descripción:</strong> {desc_text}</span><br>"
                             st.markdown(
                                 f"**{r['cliente']}** &nbsp; {badge(r['dictamen'])} &nbsp; "
                                 f"<span style='color:#64748B;font-size:0.85em'>{r['moneda']} {r['monto']:,.2f}</span><br>"
+                                f"<span style='font-size:0.83em;color:#64748B'>Creado: {r.get('fecha', '')}</span><br>"
+                                f"{desc_html}"
                                 f"<span style='font-size:0.83em;color:#475569'>"
                                 f"Firmas: C:{sc} L:{sl} R:{sr} &nbsp;|&nbsp; "
                                 f"Score: <strong>{r.get('score_f', 'N/A')}</strong> &nbsp;|&nbsp; "
                                 f"DSCR: <strong>{r.get('dscr', 0):.2f}x</strong></span>",
                                 unsafe_allow_html=True)
                             
-                            if r['dictamen'] != 'PENDIENTE':
-                                st.caption(f"✅ **Aprobado por:** {r.get('aprobado_por', 'N/A')}")
+                            if r['dictamen'] == 'APROBADO':
+                                st.caption(f"✅ **Aprobado por:** {r.get('aprobado_por', 'N/A')} &nbsp; | &nbsp;  **Fecha:** {r.get('fecha_decision', 'N/A')}")
+                            elif r['dictamen'] == 'RECHAZADO':
+                                st.caption(f"❌ **Rechazado por:** {r.get('aprobado_por', 'N/A')} &nbsp; | &nbsp; **Fecha:** {r.get('fecha_decision', 'N/A')}")
                         
                         # Columna 2: Acciones
                         with c2:
@@ -263,9 +270,14 @@ def show():
                         
                         # Columna 1: Info y Aprobador
                         with ca1:
+                            desc_val_a = r.get('descripcion', '')
+                            desc_text_a = desc_val_a if desc_val_a and str(desc_val_a).strip().lower() != 'nan' and str(desc_val_a).strip() else 'Sin descripción'
+                            desc_html_a = f"<span style='font-size:0.85em;color:#334155;font-style:italic;'><strong>Descripción:</strong> {desc_text_a}</span><br>"
                             ca1.markdown(
                                 f"**{r['cliente']}** &nbsp; {badge(r['dictamen'])} &nbsp; "
                                 f"<span style='color:#64748B;font-size:0.85em'>{r['moneda']} {r['monto']:,.2f}</span><br>"
+                                f"<span style='font-size:0.83em;color:#64748B'> Creado: {r.get('fecha', '')}</span><br>"
+                                f"{desc_html_a}"
                                 f"<span style='font-size:0.83em;color:#64748B'>"
                                 f"{APP_ICONS['automotriz']} {r.get('marca','')} {r.get('modelo','')} {r.get('anio','')}</span><br>"
                                 f"<span style='font-size:0.83em;color:#475569'>"
@@ -274,8 +286,10 @@ def show():
                                 f"DTI: <strong>{r.get('dti_ratio', 0):.2f}%</strong></span>",
                                 unsafe_allow_html=True)
                             
-                            if r['dictamen'] != 'PENDIENTE':
-                                st.caption(f"✅ **Aprobado por:** {r.get('aprobado_por', 'N/A')}")
+                            if r['dictamen'] == 'APROBADO':
+                                st.caption(f"✅ **Aprobado por:** {r.get('aprobado_por', 'N/A')} &nbsp; | &nbsp;  **Fecha:** {r.get('fecha_decision', 'N/A')}")
+                            elif r['dictamen'] == 'RECHAZADO':
+                                st.caption(f"❌ **Rechazado por:** {r.get('aprobado_por', 'N/A')} &nbsp; | &nbsp;  **Fecha:** {r.get('fecha_decision', 'N/A')}")
 
                         # Columna 2: Acciones
                         with ca2:
@@ -313,7 +327,7 @@ def show():
                                     st.rerun()
                             
                         if r['dictamen'] == 'APROBADO':
-                            with st.expander(f"📅 Plan de Amortización — {r['cliente']} | {r.get('marca','')} {r.get('modelo','')}"):
+                            with st.expander(f"Plan de Amortización — {r['cliente']} | {r.get('marca','')} {r.get('modelo','')}"):
                                 from database.daos_sqlserver import PlanPagoDAO
                                 df_pp = pd.DataFrame(PlanPagoDAO.get_by_expediente(r['id'], 'auto'))
                                 if df_pp.empty:

@@ -17,7 +17,11 @@ if "kfg_session" in st.query_params:
     del st.query_params["kfg_session"]
 
 # 2. Inicialización de la Base de Datos
-init_db()
+@st.cache_resource
+def startup_db():
+    init_db()
+
+startup_db()
 
 # 3. Importación de la vista de login (AuthView)
 from views import auth_view
@@ -176,5 +180,9 @@ else:
             
         st.button("🚪 Cerrar Sesión", width='stretch', on_click=handle_logout)
         st.markdown("<br><div style='color:#94A3B8;font-size:0.75em;text-align:center'>Kaizen apps<br>Multipage Architecture</div>", unsafe_allow_html=True)
+        
+    if st.session_state.get('go_to_clientes'):
+        st.session_state['go_to_clientes'] = False
+        st.switch_page(p_clientes)
     
     pg.run()

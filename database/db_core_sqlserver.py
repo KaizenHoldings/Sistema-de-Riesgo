@@ -104,7 +104,7 @@ def init_db():
             ("covenants", "NVARCHAR(MAX) DEFAULT ''"), ("plazo_meses", "INT DEFAULT 36"),
             ("cliente_id", "INT DEFAULT NULL"), ("plan_generado", "INT DEFAULT 0"),
             ("estado_cobranza", "NVARCHAR(50) DEFAULT 'Al día'"), ("tipo_producto", "NVARCHAR(50) DEFAULT 'Corporativo'"),
-            ("ingresos_mensuales", "FLOAT DEFAULT 0")
+            ("ingresos_mensuales", "FLOAT DEFAULT 0"), ("descripcion", "NVARCHAR(MAX) DEFAULT ''")
         ]
         for col, dtype in columns_wf:
             if not column_exists('expedientes_wf', col):
@@ -154,7 +154,8 @@ def init_db():
             ("cliente_id", "INT DEFAULT NULL"), ("plan_generado", "INT DEFAULT 0"),
             ("estado_cobranza", "NVARCHAR(50) DEFAULT 'Al día'"), ("tipo_producto", "NVARCHAR(50) DEFAULT 'Corporativo'"),
             ("vehiculo_placa", "NVARCHAR(20) DEFAULT ''"), ("seguro_empresa", "NVARCHAR(100) DEFAULT ''"),
-            ("seguro_poliza", "NVARCHAR(100) DEFAULT ''"), ("seguro_vigencia", "NVARCHAR(50) DEFAULT ''")
+            ("seguro_poliza", "NVARCHAR(100) DEFAULT ''"), ("seguro_vigencia", "NVARCHAR(50) DEFAULT ''"),
+            ("descripcion", "NVARCHAR(MAX) DEFAULT ''")
         ]
         for col, dtype in columns_auto:
             if not column_exists('expedientes_auto', col):
