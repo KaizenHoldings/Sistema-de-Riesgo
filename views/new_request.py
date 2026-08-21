@@ -3,6 +3,7 @@ from datetime import datetime
 import pandas as pd
 
 from database.daos_sqlserver import ClienteDAO, ExpedienteCorporativoDAO, ExpedienteAutomotrizDAO
+from services.metrics_service import get_sidebar_metrics
 from utils import page_header
 
 st.markdown("""
@@ -68,7 +69,7 @@ def modal_seleccionar_cliente():
     with col_search:
         buscar = st.text_input("Buscador", placeholder="Ej: Kaizen, V-12345678...", label_visibility="collapsed")
     with col_btn:
-        if st.button("➕ Nuevo Cliente", use_container_width=True, type="primary"):
+        if st.button("Nuevo Cliente", use_container_width=True, type="primary"):
             st.session_state['go_to_clientes'] = True
             st.rerun()
             
@@ -106,7 +107,8 @@ def modal_seleccionar_cliente():
 
     # Mostrar tarjetas de clientes
     for _, row in df_page.iterrows():
-        tipo_icon = "🏢" if row['tipo'] == "Jurídica" else "👤"
+        user_svg = """<div style="display:flex; align-items:center; justify-content:center;"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="#162e70" d="M12 2a5 5 0 1 0 0 10a5 5 0 1 0 0-10M4 22h16c.55 0 1-.45 1-1v-1c0-3.86-3.14-7-7-7h-4c-3.86 0-7 3.14-7 7v1c0 .55.45 1 1 1" /></svg></div>"""
+        tipo_icon = "🏢" if row['tipo'] == "Jurídica" else user_svg
         kyc = row.get('kyc_status', 'N/A')
         
         # Color del badge KYC
@@ -204,10 +206,10 @@ def show():
         st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("🔍 Buscar Cliente Existente", type="primary", use_container_width=True):
+            if st.button("Buscar Cliente Existente", type="primary", use_container_width=True):
                 modal_seleccionar_cliente()
         with col2:
-            if st.button("➕ Crear Nuevo Cliente", use_container_width=True):
+            if st.button("Crear Nuevo Cliente", use_container_width=True):
                 st.session_state['go_to_clientes'] = True
                 st.rerun()
     else:
@@ -218,7 +220,12 @@ def show():
             st.markdown(f"""
             <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;
                         padding:24px;margin-bottom:24px;display:flex;align-items:center;gap:18px">
-                <div style="font-size:3em">👤</div>
+                <div style="font-size:3em; display:flex; align-items:center; justify-content:center;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24">
+                        <path d="M0 0h24v24H0z" fill="none" />
+                        <path fill="#162e70" d="M12 2a5 5 0 1 0 0 10a5 5 0 1 0 0-10M4 22h16c.55 0 1-.45 1-1v-1c0-3.86-3.14-7-7-7h-4c-3.86 0-7 3.14-7 7v1c0 .55.45 1 1 1" />
+                    </svg>
+                </div>
                 <div style="flex:1">
                     <div style="color:#1E40AF;font-size:0.85em;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">
                         Cliente Seleccionado · Crédito {def_tipo}
@@ -238,7 +245,7 @@ def show():
             
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
             
-            if st.button("📝 CREAR EXPEDIENTE", type="primary", use_container_width=True):
+            if st.button("CREAR EXPEDIENTE", type="primary", use_container_width=True):
                 if monto > 0:
                     fecha_hoy = datetime.now().strftime("%Y-%m-%d")
                     if def_tipo == "Corporativo":
@@ -248,9 +255,12 @@ def show():
                         ExpedienteAutomotrizDAO.create(fecha_hoy, def_nombre, def_rif, monto, cliente_id, descripcion)
                         st.session_state['nr_success_msg'] = f"✅ Expediente Automotriz creado para **{def_nombre}** por ${monto:,.2f}"
                     
+                    # Invalidar caché de notificaciones del sidebar para actualizar de inmediato
+                    get_sidebar_metrics.clear()
+                    
                     st.session_state['do_clear_form'] = True
                     st.rerun()
                 else:
                     st.warning("El monto solicitado debe ser mayor a 0 para crear el expediente.")
                     
-            st.button("✖ Cambiar Cliente / Cancelar", on_click=clear_form_state, use_container_width=True)
+            st.button("Cambiar Cliente / Cancelar", on_click=clear_form_state, use_container_width=True)

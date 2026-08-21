@@ -3,3 +3,6 @@ pandas==2.2.0
 fpdf==1.7.2
 openpyxl
 python-dotenv
+bcrypt
+SQLAlchemy
+pyodbc

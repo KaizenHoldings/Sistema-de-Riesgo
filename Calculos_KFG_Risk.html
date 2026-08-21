@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual de Cálculos KFG Risk Architect</title>
+    <!-- MathJax Configuration -->
+    <script>
+      MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          displayMath: [['$$', '$$'], ['\\[', '\\]']]
+        }
+      };
+    </script>
+    <!-- MathJax for LaTeX -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #162e70;
+            --text-main: #334155;
+            --text-muted: #64748b;
+            --bg-page: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-formula: #f1f5f9;
+        }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--bg-page); 
+            color: var(--text-main); 
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 2rem auto; 
+            background: var(--bg-card); 
+            padding: 3rem; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); 
+        }
+        h1, h2, h3 { color: var(--primary); margin-top: 1.5em; }
+        h1 { font-weight: 800; font-size: 2.2rem; margin-top: 0; text-align: center; }
+        h2 { font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+        .formula-box { 
+            background: var(--bg-formula); 
+            padding: 1.5rem; 
+            border-radius: 8px; 
+            margin: 1.5rem 0; 
+            text-align: center; 
+            overflow-x: auto; 
+            border: 1px solid #e2e8f0;
+        }
+        .description { font-size: 0.95em; color: var(--text-muted); }
+        .note { 
+            border-left: 4px solid var(--primary); 
+            background: #eff6ff; 
+            padding: 1rem 1.5rem; 
+            margin-top: 2rem; 
+            border-radius: 0 8px 8px 0;
+            color: #1e3a8a;
+        }
+        ul { padding-left: 1.5rem; }
+        li { margin-bottom: 0.5rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📈 Fórmulas KFG Risk Architect</h1>
+        <p style="text-align:center; color:#64748b;">Detalle técnico de cálculos del motor de riesgo y pricing.</p>
+        
+        <h2>🏢 1. Crédito Corporativo</h2>
+        <p>El motor evalúa métricas financieras de las empresas para generar un score basado en liquidez, solvencia y cobertura.</p>
+
+        <h3>📊 1.1 Indicadores Financieros</h3>
+        <p><strong>DSCR (Debt Service Coverage Ratio):</strong><br>
+        <span class="description">Mide la capacidad de la empresa para cubrir sus obligaciones con su flujo de caja operativo.</span></p>
+        <div class="formula-box">
+            $$DSCR = \frac{EBITDA}{Gastos\ Financieros + Cuota\ Anualizada}$$
+        </div>
+
+        <h3>🏆 1.2 Score de Riesgo (1 a 10)</h3>
+        <p>El score corporativo está compuesto por tres dimensiones ponderables.</p>
+        
+        <p><strong>Score Base ($S_{base}$):</strong></p>
+        <div class="formula-box">
+            $$S_{base} = \frac{(Score_{Liq} \cdot W_{liq}) + (Score_{Solv} \cdot W_{sol}) + (Score_{Cob} \cdot W_{cob})}{W_{liq} + W_{sol} + W_{cob}}$$
+        </div>
+        <p class="description">*Donde $W$ representa los pesos configurados por el administrador.*</p>
+
+        <p><strong>Ajuste Kaizen (AML/Compliance) ($S_{final}$):</strong><br>
+        <span class="description">Si el cliente tiene un nivel de riesgo bajo en legitimación de capitales (Kaizen Compliance), su score recibe un "boost" (mejora).</span></p>
+        <div class="formula-box">
+            $$S_{final} = \min\left( S_{base} \cdot \left(1 + \frac{Score_{KC}}{10} \cdot \%Boost\right), 10 \right)$$
+        </div>
+
+        <h3>💲 1.3 Política de Pricing (Tasa Sugerida)</h3>
+        <p class="description">El modelo de pricing penaliza los scores más bajos aumentando la tasa de interés base.</p>
+        <div class="formula-box">
+            $$Tasa = Tasa_{base} + (10 - S_{final}) \cdot Factor_{riesgo}$$
+        </div>
+
+        <h2 style="margin-top: 3rem;">🚗 2. Crédito Automotriz</h2>
+        <p>Para la cartera de retail automotriz, el motor evalúa la capacidad de pago del individuo, el respaldo de la garantía y la estabilidad de ingresos.</p>
+
+        <h3>📊 2.1 Indicadores de Crédito Retail</h3>
+        
+        <p><strong>LTV (Loan-to-Value):</strong><br>
+        <span class="description">Mide el porcentaje de financiamiento frente al valor real del vehículo. Cuanto menor sea, menor es el riesgo.</span></p>
+        <div class="formula-box">
+            $$LTV = \left( \frac{Monto\ Solicitado}{Precio\ del\ Vehículo} \right) \times 100$$
+        </div>
+
+        <p><strong>DTI Ratio (Debt-to-Income):</strong><br>
+        <span class="description">Proporción de los ingresos mensuales que se comprometerán al pago del crédito. (Un DTI > 40% levanta una alerta).</span></p>
+        <div class="formula-box">
+            $$DTI = \left( \frac{Cuota\ Mensual}{Ingreso\ Mensual} \right) \times 100$$
+        </div>
+
+        <h3>🏆 2.2 Score de Riesgo Automotriz</h3>
+        <p>El score se basa en tres componentes ponderados:</p>
+        
+        <p><strong>Score Base ($S_{base}$):</strong></p>
+        <div class="formula-box">
+            $$S_{base} = \frac{(Score_{Cap} \cdot W_{cap}) + (Score_{LTV} \cdot W_{ltv}) + (Score_{Est} \cdot W_{est})}{W_{cap} + W_{ltv} + W_{est}}$$
+        </div>
+        <ul class="description">
+            <li><strong>Cap:</strong> Score de Capacidad de Pago (Basado inversamente en el DTI).</li>
+            <li><strong>LTV:</strong> Score Loan-to-Value (Basado en el aporte inicial o enganche).</li>
+            <li><strong>Est:</strong> Score Nivel de estabilidad laboral (Cualitativo).</li>
+        </ul>
+
+        <p><strong>Ajuste Kaizen (AML/Compliance) ($S_{final}$):</strong></p>
+        <div class="formula-box">
+            $$S_{final} = \min\left( S_{base} \cdot \left(1 + \frac{Score_{KC}}{10} \cdot \%Boost\ Auto\right), 10 \right)$$
+        </div>
+
+        <h3>💲 2.3 Política de Pricing Automotriz</h3>
+        <p class="description">Calcula la tasa recomendada para el financiamiento del vehículo ajustada al riesgo del individuo.</p>
+        <div class="formula-box">
+            $$Tasa = Tasa_{base\ Auto} + (10 - S_{final}) \cdot Factor_{riesgo\ Auto}$$
+        </div>
+
+        <div class="note">
+            <strong>💡 Modificadores Configurables:</strong><br> Todos los pesos ($W$), $\%Boost$, $Tasa_{base}$ y $Factor_{riesgo}$ pueden ser modificados en tiempo real desde la sección <em>Configuración (Admin)</em> sin necesidad de alterar el código del motor.
+        </div>
+    </div>
+</body>
+</html>

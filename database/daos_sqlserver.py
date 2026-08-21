@@ -7,18 +7,69 @@ from services.security_service import SecurityService
 
 def _build_where(filters: dict, _table: str = "") -> tuple:
     """
-    Construye dinámicamente una cláusula WHERE y su lista de parámetros
-    usando nombres para SQLAlchemy.
+    Construye dinámicamente una cláusula WHERE y su diccionario de parámetros
+    usando marcadores nombrados para SQLAlchemy.
+
+    Un valor escalar genera `columna = :pN`. Una lista, tupla o conjunto genera
+    `columna IN (:pN_0, :pN_1, ...)`, con un marcador nombrado por elemento, de
+    modo que los valores nunca se interpolan en la cadena SQL.
     """
     clauses = []
     params = {}
     for i, (col, val) in enumerate(filters.items()):
-        if val is not None:
+        if val is None:
+            continue
+
+        if isinstance(val, (list, tuple, set)):
+            valores = [v for v in val if v is not None]
+            if not valores:
+                continue
+            marcadores = []
+            for j, v in enumerate(valores):
+                nombre = f"p{i}_{j}"
+                marcadores.append(f":{nombre}")
+                params[nombre] = v
+            clauses.append(f"{col} IN ({', '.join(marcadores)})")
+        else:
             param_name = f"p{i}"
             clauses.append(f"{col} = :{param_name}")
             params[param_name] = val
+
     where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
     return where, params
+
+
+def _append_cond(where: str, cond: str) -> str:
+    """Anexa una condicion al WHERE ya construido, eligiendo WHERE o AND."""
+    if not cond:
+        return where
+    connector = " AND " if where else " WHERE "
+    return f"{where}{connector}{cond}"
+
+
+def _append_activos(where: str) -> str:
+    """Excluye los expedientes con borrado logico (eliminado = 1)."""
+    return _append_cond(where, "eliminado = 0")
+
+
+def _append_firmas(where: str, firmas_completas: bool = None) -> str:
+    """
+    Anexa la condicion de firmas al WHERE ya construido por `_build_where`.
+
+    True  -> las tres firmas registradas.
+    False -> al menos una firma pendiente.
+    None  -> sin filtro (devuelve el WHERE intacto).
+
+    Usa literales 0/1, asi que no altera el diccionario de parametros ni el
+    patron de SQL parametrizado del resto de la capa.
+    """
+    if firmas_completas is None:
+        return where
+    if firmas_completas:
+        cond = "status_comp = 1 AND status_leg = 1 AND status_riesgo = 1"
+    else:
+        cond = "(status_comp = 0 OR status_leg = 0 OR status_riesgo = 0)"
+    return _append_cond(where, cond)
 
 class UsuarioDAO:
     @staticmethod
@@ -79,21 +130,24 @@ class ExpedienteCorporativoDAO:
     @staticmethod
     def get_all_as_df():
         engine = get_connection()
-        return pd.read_sql_query(text("SELECT * FROM expedientes_wf"), engine)
+        return pd.read_sql_query(text("SELECT * FROM expedientes_wf WHERE eliminado = 0"), engine)
 
     @staticmethod
-    def count(dictamen: str = None, cliente: str = None, 
-              status_comp: int = None, status_leg: int = None, status_riesgo: int = None) -> int:
+    def count(dictamen: str = None, cliente: str = None,
+              status_comp: int = None, status_leg: int = None, status_riesgo: int = None,
+              firmas_completas: bool = None) -> int:
         engine = get_connection()
         filters = {
-            'dictamen': dictamen, 
+            'dictamen': dictamen,
             'cliente': cliente,
             'status_comp': status_comp,
             'status_leg': status_leg,
             'status_riesgo': status_riesgo
         }
-        
+
         where, params = _build_where(filters, 'expedientes_wf')
+        where = _append_firmas(where, firmas_completas)
+        where = _append_activos(where)
         with engine.connect() as conn:
            
             res = conn.execute(text(f"SELECT COUNT(*) FROM expedientes_wf{where}"), params).fetchone()
@@ -101,9 +155,12 @@ class ExpedienteCorporativoDAO:
 
     @staticmethod
     def get_paginated(page: int = 1, page_size: int = 10,
-                      dictamen: str = None, cliente: str = None) -> pd.DataFrame:
+                      dictamen: str = None, cliente: str = None,
+                      firmas_completas: bool = None) -> pd.DataFrame:
         engine = get_connection()
         where, params = _build_where({'dictamen': dictamen, 'cliente': cliente}, 'expedientes_wf')
+        where = _append_firmas(where, firmas_completas)
+        where = _append_activos(where)
         offset = (page - 1) * page_size
         params['off'] = offset
         params['lim'] = page_size
@@ -112,7 +169,7 @@ class ExpedienteCorporativoDAO:
     
     @staticmethod
     def delete(exp_id):
-        db_action("DELETE FROM expedientes_wf WHERE id = :id", {"id": exp_id})
+        db_action("UPDATE expedientes_wf SET eliminado = 1 WHERE id = :id", {"id": exp_id})
         
     @staticmethod
     def update_compliance(exp_id, riesgo_aml, origen_fondos, obs, check_pep, check_sanciones):
@@ -148,6 +205,27 @@ class ExpedienteCorporativoDAO:
                       {"a": aprobado_por, "f": fecha, "id": exp_id})
             
     @staticmethod
+    def rechazar_expediente(exp_id, obs, usuario, fecha):
+        """Rechazo definitivo con justificacion registrada."""
+        db_action("""UPDATE expedientes_wf SET dictamen = 'RECHAZADO', obs_decision = :o,
+                     devuelto_a = '', aprobado_por = :a, fecha_decision = :f WHERE id = :id""",
+                  {"o": obs, "a": usuario, "f": fecha, "id": exp_id})
+
+    @staticmethod
+    def devolver_expediente(exp_id, etapa_destino, observaciones, usuario=None, fecha=None):
+        """
+        Devuelve el expediente a una etapa previa.
+
+        Fija el dictamen en 'REVISION-{etapa_destino}' y registra las
+        observaciones. `usuario` y `fecha` son opcionales y alimentan la traza
+        de auditoria cuando la vista los proporciona.
+        """
+        db_action("""UPDATE expedientes_wf SET dictamen = :d, devuelto_a = :ar, obs_decision = :o,
+                     aprobado_por = :a, fecha_decision = :f WHERE id = :id""",
+                  {"d": f"REVISIÓN-{etapa_destino}", "ar": etapa_destino,
+                   "o": observaciones, "a": usuario or '', "f": fecha or '', "id": exp_id})
+
+    @staticmethod
     def update_estado_cobranza(exp_id, estado):
         db_action("UPDATE expedientes_wf SET estado_cobranza = :e WHERE id = :id", {"e": estado, "id": exp_id})
 
@@ -160,11 +238,12 @@ class ExpedienteAutomotrizDAO:
     @staticmethod
     def get_all_as_df():
         engine = get_connection()
-        return pd.read_sql_query(text("SELECT * FROM expedientes_auto"), engine)
+        return pd.read_sql_query(text("SELECT * FROM expedientes_auto WHERE eliminado = 0"), engine)
 
     @staticmethod
     def count(dictamen: str = None, cliente: str = None,
-              status_comp: int = None, status_leg: int = None, status_riesgo: int = None) -> int:
+              status_comp: int = None, status_leg: int = None, status_riesgo: int = None,
+              firmas_completas: bool = None) -> int:
         engine = get_connection()
         filters = {
             'dictamen': dictamen, 
@@ -174,15 +253,20 @@ class ExpedienteAutomotrizDAO:
             'status_riesgo': status_riesgo
         }
         where, params = _build_where(filters, 'expedientes_auto')
+        where = _append_firmas(where, firmas_completas)
+        where = _append_activos(where)
         with engine.connect() as conn:
             res = conn.execute(text(f"SELECT COUNT(*) FROM expedientes_auto{where}"), params).fetchone()
             return res[0] if res else 0
 
     @staticmethod
     def get_paginated(page: int = 1, page_size: int = 10,
-                      dictamen: str = None, cliente: str = None) -> pd.DataFrame:
+                      dictamen: str = None, cliente: str = None,
+                      firmas_completas: bool = None) -> pd.DataFrame:
         engine = get_connection()
         where, params = _build_where({'dictamen': dictamen, 'cliente': cliente}, 'expedientes_auto')
+        where = _append_firmas(where, firmas_completas)
+        where = _append_activos(where)
         offset = (page - 1) * page_size
         params['off'] = offset
         params['lim'] = page_size
@@ -191,7 +275,7 @@ class ExpedienteAutomotrizDAO:
     
     @staticmethod
     def delete(exp_id):
-        db_action("DELETE FROM expedientes_auto WHERE id = :id", {"id": exp_id})
+        db_action("UPDATE expedientes_auto SET eliminado = 1 WHERE id = :id", {"id": exp_id})
         
     @staticmethod
     def update_compliance(exp_id, ocupacion, empleador, telefono, riesgo_aml, origen_fondos, check_pep, check_sanciones, obs):
@@ -235,6 +319,27 @@ class ExpedienteAutomotrizDAO:
                       {"a": aprobado_por, "f": fecha, "id": exp_id})
             
     @staticmethod
+    def rechazar_expediente(exp_id, obs, usuario, fecha):
+        """Rechazo definitivo con justificacion registrada."""
+        db_action("""UPDATE expedientes_auto SET dictamen = 'RECHAZADO', obs_decision = :o,
+                     devuelto_a = '', aprobado_por = :a, fecha_decision = :f WHERE id = :id""",
+                  {"o": obs, "a": usuario, "f": fecha, "id": exp_id})
+
+    @staticmethod
+    def devolver_expediente(exp_id, etapa_destino, observaciones, usuario=None, fecha=None):
+        """
+        Devuelve el expediente a una etapa previa.
+
+        Fija el dictamen en 'REVISION-{etapa_destino}' y registra las
+        observaciones. `usuario` y `fecha` son opcionales y alimentan la traza
+        de auditoria cuando la vista los proporciona.
+        """
+        db_action("""UPDATE expedientes_auto SET dictamen = :d, devuelto_a = :ar, obs_decision = :o,
+                     aprobado_por = :a, fecha_decision = :f WHERE id = :id""",
+                  {"d": f"REVISIÓN-{etapa_destino}", "ar": etapa_destino,
+                   "o": observaciones, "a": usuario or '', "f": fecha or '', "id": exp_id})
+
+    @staticmethod
     def update_estado_cobranza(exp_id, estado):
         db_action("UPDATE expedientes_auto SET estado_cobranza = :e WHERE id = :id", {"e": estado, "id": exp_id})
 
@@ -251,7 +356,7 @@ class ClienteDAO:
     @staticmethod
     def get_all_as_df():
         engine = get_connection()
-        return pd.read_sql_query(text("SELECT * FROM clientes ORDER BY fecha_registro DESC"), engine)
+        return pd.read_sql_query(text("SELECT * FROM clientes ORDER BY id DESC"), engine)
 
     @staticmethod
     def count(nombre: str = None, tipo: str = None, kyc_status: str = None) -> int:
@@ -278,7 +383,7 @@ class ClienteDAO:
         offset = (page - 1) * page_size
         params['off'] = offset
         params['lim'] = page_size
-        query = f"SELECT * FROM clientes{where} ORDER BY fecha_registro DESC OFFSET :off ROWS FETCH NEXT :lim ROWS ONLY"
+        query = f"SELECT * FROM clientes{where} ORDER BY id DESC OFFSET :off ROWS FETCH NEXT :lim ROWS ONLY"
         return pd.read_sql_query(text(query), engine, params=params)
 
     @staticmethod

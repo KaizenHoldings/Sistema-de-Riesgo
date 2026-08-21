@@ -4,10 +4,11 @@ import json
 from datetime import datetime, date, timedelta
 from utils import page_header, section_divider, paginate_dataframe, APP_ICONS
 from database.daos_sqlserver import ExpedienteCorporativoDAO, ExpedienteAutomotrizDAO, ClienteDAO
+from services.metrics_service import get_sidebar_metrics
 
 @st.dialog("Confirmar Revisión Legal")
 def modal_firmar_legal(r, tipo, data):
-    st.markdown(f"### ¿Confirmar revisión legal para **{r['cliente']}**?")
+    st.markdown(f"### ¿Confirmar revisión legal para **{r['cliente'].upper()}**?")
     st.write("Se registrarán los colaterales y la validación de documentación para este expediente.")
     
     if st.button("Confirmar Firma Legal", type="primary", width='stretch'):
@@ -44,7 +45,39 @@ def modal_firmar_legal(r, tipo, data):
                     seguro_vigencia=data['seguro_vigencia']
                 )
             st.success("✅ Revisión Legal registrada.")
+            get_sidebar_metrics.clear()
             st.rerun()
+
+# Etapas a las que esta vista puede devolver un expediente
+ETAPAS_DEVOLUCION = ["Comercial", "Cumplimiento"]
+
+
+@st.dialog("Devolver Expediente")
+def modal_devolver_expediente(r, tipo):
+    """Devuelve el expediente a una etapa previa con justificacion obligatoria."""
+    st.warning(f"### Devolver **{r['cliente']}** para correccion")
+    st.write(f"Monto: **{r.get('moneda', 'USD')} {r['monto']:,.2f}** "
+             f"&nbsp;·&nbsp; Creado: {r.get('fecha', '')}")
+
+    etapa = st.selectbox("Etapa destino", ETAPAS_DEVOLUCION,
+                         key=f"dev_etapa_leg_{tipo}_{r['id']}")
+    obs = st.text_area("Justificacion de la devolucion (obligatoria)",
+                       key=f"dev_obs_leg_{tipo}_{r['id']}", height=110)
+
+    if st.button("Confirmar Devolucion", type="primary", width='stretch'):
+        if not obs.strip():
+            st.warning("Debe indicar la justificacion de la devolucion.")
+        else:
+            dao = ExpedienteCorporativoDAO if tipo == 'corp' else ExpedienteAutomotrizDAO
+            with st.spinner("Registrando devolucion..."):
+                dao.devolver_expediente(
+                    exp_id=r['id'], etapa_destino=etapa, observaciones=obs.strip(),
+                    usuario=st.session_state.get('current_user', 'Admin'),
+                    fecha=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            get_sidebar_metrics.clear()
+            st.success(f"Expediente devuelto a {etapa}.")
+            st.rerun()
+
 
 def show():
     page_header("legal", "Legal & Gestión de Colateral",
@@ -56,8 +89,13 @@ def show():
         df_auto_raw = ExpedienteAutomotrizDAO.get_all_as_df()
 
         # Filtrar pendientes ANTES de declarar las pestañas
-        df_l = df_corp_raw[(df_corp_raw['status_leg'] == 0) & (df_corp_raw['dictamen'] == 'PENDIENTE')] if not df_corp_raw.empty else pd.DataFrame()
-        df_la = df_auto_raw[(df_auto_raw['status_leg'] == 0) & (df_auto_raw['dictamen'] == 'PENDIENTE')] if not df_auto_raw.empty else pd.DataFrame()
+        # Regla de negocio: Legal solo puede evaluar tras la certificación de Cumplimiento
+        df_l = df_corp_raw[(df_corp_raw['status_comp'] == 1) &
+                           (df_corp_raw['status_leg'] == 0) &
+                           (df_corp_raw['dictamen'] == 'PENDIENTE')].copy() if not df_corp_raw.empty else pd.DataFrame()
+        df_la = df_auto_raw[(df_auto_raw['status_comp'] == 1) &
+                            (df_auto_raw['status_leg'] == 0) &
+                            (df_auto_raw['dictamen'] == 'PENDIENTE')].copy() if not df_auto_raw.empty else pd.DataFrame()
 
         count_corp = len(df_l)
         count_auto = len(df_la)
@@ -91,6 +129,10 @@ def show():
                         st.session_state[f"g_list_{r['id']}"].append({"tipo": tg, "desc": dg, "valor": vg})
                         st.rerun()
 
+                    _, bl_dev = st.columns([2.4, 1])
+                    if bl_dev.button("↩️ Devolver", key=f"l_dev_{r['id']}", width='stretch'):
+                        modal_devolver_expediente(r, 'corp')
+
                     if st.session_state[f"g_list_{r['id']}"]:
                         st.table(pd.DataFrame(st.session_state[f"g_list_{r['id']}"]))
                         v_tot = sum(x['valor'] for x in st.session_state[f"g_list_{r['id']}"])
@@ -103,7 +145,7 @@ def show():
                         cust = c_cust.checkbox("Custodia Física Confirmada", key=f"l_cust_{r['id']}")
                         obs_l = st.text_area("Observaciones Legales", key=f"l_obs_{r['id']}")
                         
-                        if st.button("Firmar Legal", key=f"l_f_{r['id']}"):
+                        if st.button("Firmar Legal", key=f"l_f_{r['id']}", width='stretch'):
                             data_l = {
                                 'garantias_json': json.dumps(st.session_state[f"g_list_{r['id']}"]),
                                 'v_garantia': v_tot,
@@ -120,8 +162,8 @@ def show():
         else:
             df_la_pag = paginate_dataframe(df_la, page_size=10, key_prefix="leg_auto")
             for _, r in df_la_pag.iterrows():
-                cli = ClienteDAO.get_by_id(r.get('cliente_id'))
-                with st.expander(f"🚗 {r['cliente']} | {r['marca']} {r['modelo']} | ${r['monto']:,.2f}"):
+                rif_str = str(r.get('cedula', '')).upper() if pd.notna(r.get('cedula')) else ''
+                with st.expander(f"{r['cliente'].upper()} | RIF: {rif_str} | {r.get('marca', '')} {r.get('modelo', '')} | ${r['monto']:,.2f}"):
                     st.markdown(f"#### {APP_ICONS['automotriz']} Análisis de Garantía Automotriz", unsafe_allow_html=True)
                     st.markdown("**Datos del Vehículo:**")
                     v1, v2, v3 = st.columns(3)
@@ -172,7 +214,10 @@ def show():
                     obs_la = st.text_area("Observaciones Legales", key=f"la_obs_{r['id']}")
                     all_legal_ok = seg_v and lien_v and transito_v
                     
-                    if st.button("Firmar Legal", key=f"la_f_{r['id']}", disabled=not all_legal_ok):
+                    bla_f, bla_dev, _ = st.columns([1.2, 1, 1.8])
+                    if bla_dev.button("↩️ Devolver", key=f"la_dev_{r['id']}", width='stretch'):
+                        modal_devolver_expediente(r, 'auto')
+                    if bla_f.button("Firmar Legal", key=f"la_f_{r['id']}", disabled=not all_legal_ok, width='stretch'):
                         data_la = {
                             'marca': marca, 'modelo': modelo_v, 'anio': anio_v,
                             'vin': vin_v, 'precio_vehiculo': precio_v, 'tipo_vehiculo': tipo_v,

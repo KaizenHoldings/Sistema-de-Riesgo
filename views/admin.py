@@ -7,7 +7,7 @@ def show():
                 "Pesos de calificación, fórmulas de scoring y política de pricing",
                 "KFG Risk Architect · Configuración")
                 
-    tab_cfg_corp, tab_cfg_auto = st.tabs(["🏢 Crédito Corporativo", "🚗 Crédito Automotriz"])
+    tab_cfg_corp, tab_cfg_auto = st.tabs(["Crédito Corporativo", "Crédito Automotriz"])
 
     with tab_cfg_corp:
         st.subheader("Fórmulas — Crédito Corporativo")

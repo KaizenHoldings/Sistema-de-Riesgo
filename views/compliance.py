@@ -1,11 +1,13 @@
 import streamlit as st
+from datetime import datetime
 import pandas as pd
 from utils import page_header, section_divider, paginate_dataframe, APP_ICONS
 from database.daos_sqlserver import ExpedienteCorporativoDAO, ExpedienteAutomotrizDAO, ClienteDAO
+from services.metrics_service import get_sidebar_metrics
 
 @st.dialog("Confirmar Certificación")
 def modal_certificar_comp(r, tipo, data):
-    st.markdown(f"### ¿Confirmar certificación para **{r['cliente']}**?")
+    st.markdown(f"### ¿Confirmar certificación para **{r['cliente'].upper()}**?")
     st.write("Al certificar, usted confirma que ha realizado la debida diligencia AML/CFT.")
     
     if st.button("Confirmar Firma y Certificar", type="primary", width='stretch'):
@@ -32,7 +34,39 @@ def modal_certificar_comp(r, tipo, data):
                     obs=data['obs']
                 )
             st.success("✅ Certificación registrada exitosamente.")
+            get_sidebar_metrics.clear()
             st.rerun()
+
+# Etapas a las que esta vista puede devolver un expediente
+ETAPAS_DEVOLUCION = ["Comercial"]
+
+
+@st.dialog("Devolver Expediente")
+def modal_devolver_expediente(r, tipo):
+    """Devuelve el expediente a una etapa previa con justificacion obligatoria."""
+    st.warning(f"### Devolver **{r['cliente']}** para correccion")
+    st.write(f"Monto: **{r.get('moneda', 'USD')} {r['monto']:,.2f}** "
+             f"&nbsp;·&nbsp; Creado: {r.get('fecha', '')}")
+
+    etapa = st.selectbox("Etapa destino", ETAPAS_DEVOLUCION,
+                         key=f"dev_etapa_comp_{tipo}_{r['id']}")
+    obs = st.text_area("Justificacion de la devolucion (obligatoria)",
+                       key=f"dev_obs_comp_{tipo}_{r['id']}", height=110)
+
+    if st.button("Confirmar Devolucion", type="primary", width='stretch'):
+        if not obs.strip():
+            st.warning("Debe indicar la justificacion de la devolucion.")
+        else:
+            dao = ExpedienteCorporativoDAO if tipo == 'corp' else ExpedienteAutomotrizDAO
+            with st.spinner("Registrando devolucion..."):
+                dao.devolver_expediente(
+                    exp_id=r['id'], etapa_destino=etapa, observaciones=obs.strip(),
+                    usuario=st.session_state.get('current_user', 'Admin'),
+                    fecha=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            get_sidebar_metrics.clear()
+            st.success(f"Expediente devuelto a {etapa}.")
+            st.rerun()
+
 
 def show():
     page_header("compliance", "Cumplimiento & AML/CFT",
@@ -74,7 +108,10 @@ def show():
                     chk_pep = st.checkbox("✅ Declaración de No PEP (Persona Expuesta Políticamente)", key=f"c_pep_{r['id']}")
                     obs = st.text_area("Observaciones AML/CFT", key=f"c_obs_{r['id']}")
                     
-                    if st.button("Certificar Cumplimiento", key=f"c_btn_{r['id']}", disabled=not chk_sanciones):
+                    b_cert, b_dev, _ = st.columns([1.4, 1, 1.6])
+                    if b_dev.button("↩️ Devolver", key=f"c_dev_{r['id']}", width='stretch'):
+                        modal_devolver_expediente(r, 'corp')
+                    if b_cert.button("Certificar Cumplimiento", key=f"c_btn_{r['id']}", disabled=not chk_sanciones, width='stretch'):
                         data_comp = {
                             'aml': aml, 'ori': ori, 'obs': obs, 
                             'pep': chk_pep, 'sanciones': chk_sanciones
@@ -91,7 +128,8 @@ def show():
         else:
             df_ca_pag = paginate_dataframe(df_ca, page_size=10, key_prefix="comp_auto")
             for _, r in df_ca_pag.iterrows():
-                with st.expander(f"🚗 {r['cliente']} | {r['marca']} {r['modelo']} | ${r['monto']:,.2f}"):
+                rif_str = str(r.get('cedula', '')).upper() if pd.notna(r.get('cedula')) else ''
+                with st.expander(f"{r['cliente'].upper()} | RIF: {rif_str} | {r.get('marca', '')} {r.get('modelo', '')} | ${r['monto']:,.2f}"):
                     st.markdown(f"#### {APP_ICONS['automotriz']} Detalle de Certificación", unsafe_allow_html=True)
                     st.markdown("**Datos Laborales del Solicitante:**")
                     a1, a2, a3 = st.columns(3)
@@ -120,7 +158,10 @@ def show():
                     chk_pep_a = st.checkbox("✅ Declaración de No PEP", key=f"ca_pep_{r['id']}")
                     obs_a = st.text_area("Observaciones AML/CFT", key=f"ca_obs_{r['id']}")
                     
-                    if st.button("Certificar Cumplimiento", key=f"ca_btn_{r['id']}", disabled=not chk_san_a):
+                    ba_cert, ba_dev, _ = st.columns([1.4, 1, 1.6])
+                    if ba_dev.button("↩️ Devolver", key=f"ca_dev_{r['id']}", width='stretch'):
+                        modal_devolver_expediente(r, 'auto')
+                    if ba_cert.button("Certificar Cumplimiento", key=f"ca_btn_{r['id']}", disabled=not chk_san_a, width='stretch'):
                         data_ca = {
                             'ocu': ocu, 'emp': emp, 'tel': tel,
                             'aml': aml_a, 'ori': ori_a, 'obs': obs_a,

@@ -50,3 +50,6 @@ htmlcov/
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# Documentos de clientes cargados (datos personales, no versionar)
+clients/

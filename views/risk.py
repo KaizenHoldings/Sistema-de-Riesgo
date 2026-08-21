@@ -1,11 +1,13 @@
 import streamlit as st
+from datetime import datetime
 import pandas as pd
 from utils import page_header, section_divider, paginate_dataframe, APP_ICONS
 from database.daos_sqlserver import ExpedienteCorporativoDAO, ExpedienteAutomotrizDAO, ConfigParametroDAO, ClienteDAO
+from services.metrics_service import get_sidebar_metrics
 
 @st.dialog("Confirmar Análisis de Riesgo")
 def modal_firmar_riesgo(r, tipo, data):
-    st.markdown(f"### ¿Confirmar firma de riesgo para **{r['cliente']}**?")
+    st.markdown(f"### ¿Confirmar firma de riesgo para **{r['cliente'].upper()}**?")
     st.write("Se registrarán los indicadores financieros y el score calculado para la evaluación final.")
     st.info(f"**Score:** {data['score']} / 10  \n**Tasa Sugerida:** {data['tasa']}%")
     
@@ -44,7 +46,39 @@ def modal_firmar_riesgo(r, tipo, data):
                     covenants=data['cov']
                 )
             st.success("✅ Análisis de Riesgo registrado.")
+            get_sidebar_metrics.clear()
             st.rerun()
+
+# Etapas a las que esta vista puede devolver un expediente
+ETAPAS_DEVOLUCION = ["Comercial", "Cumplimiento", "Legal"]
+
+
+@st.dialog("Devolver Expediente")
+def modal_devolver_expediente(r, tipo):
+    """Devuelve el expediente a una etapa previa con justificacion obligatoria."""
+    st.warning(f"### Devolver **{r['cliente']}** para correccion")
+    st.write(f"Monto: **{r.get('moneda', 'USD')} {r['monto']:,.2f}** "
+             f"&nbsp;·&nbsp; Creado: {r.get('fecha', '')}")
+
+    etapa = st.selectbox("Etapa destino", ETAPAS_DEVOLUCION,
+                         key=f"dev_etapa_ries_{tipo}_{r['id']}")
+    obs = st.text_area("Justificacion de la devolucion (obligatoria)",
+                       key=f"dev_obs_ries_{tipo}_{r['id']}", height=110)
+
+    if st.button("Confirmar Devolucion", type="primary", width='stretch'):
+        if not obs.strip():
+            st.warning("Debe indicar la justificacion de la devolucion.")
+        else:
+            dao = ExpedienteCorporativoDAO if tipo == 'corp' else ExpedienteAutomotrizDAO
+            with st.spinner("Registrando devolucion..."):
+                dao.devolver_expediente(
+                    exp_id=r['id'], etapa_destino=etapa, observaciones=obs.strip(),
+                    usuario=st.session_state.get('current_user', 'Admin'),
+                    fecha=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            get_sidebar_metrics.clear()
+            st.success(f"Expediente devuelto a {etapa}.")
+            st.rerun()
+
 
 def show():
     page_header("risk", "Análisis de Riesgo & Scoring",
@@ -64,8 +98,13 @@ def show():
         df_auto_raw = ExpedienteAutomotrizDAO.get_all_as_df()
 
         # Filtrar pendientes ANTES de declarar las pestañas
-        df_r = df_corp_raw[(df_corp_raw['status_riesgo'] == 0) & (df_corp_raw['dictamen'] == 'PENDIENTE')] if not df_corp_raw.empty else pd.DataFrame()
-        df_ra = df_auto_raw[(df_auto_raw['status_riesgo'] == 0) & (df_auto_raw['dictamen'] == 'PENDIENTE')] if not df_auto_raw.empty else pd.DataFrame()
+        # Regla de negocio: Riesgo solo puede evaluar tras la certificación de Cumplimiento
+        df_r = df_corp_raw[(df_corp_raw['status_comp'] == 1) &
+                           (df_corp_raw['status_riesgo'] == 0) &
+                           (df_corp_raw['dictamen'] == 'PENDIENTE')].copy() if not df_corp_raw.empty else pd.DataFrame()
+        df_ra = df_auto_raw[(df_auto_raw['status_comp'] == 1) &
+                            (df_auto_raw['status_riesgo'] == 0) &
+                            (df_auto_raw['dictamen'] == 'PENDIENTE')].copy() if not df_auto_raw.empty else pd.DataFrame()
 
         count_corp = len(df_r)
         count_auto = len(df_ra)
@@ -130,7 +169,10 @@ def show():
 
                     cov = st.text_area("Covenants (Condiciones Especiales Post-Cierre)", key=f"r_cov_{r['id']}")
                     obs_r = st.text_area("Observaciones Financieras", key=f"r_obs_{r['id']}")
-                    if st.button("Firmar Riesgo", key=f"r_f_{r['id']}"):
+                    br_f, br_dev, _ = st.columns([1.2, 1, 1.8])
+                    if br_dev.button("↩️ Devolver", key=f"r_dev_{r['id']}", width='stretch'):
+                        modal_devolver_expediente(r, 'corp')
+                    if br_f.button("Firmar Riesgo", key=f"r_f_{r['id']}", width='stretch'):
                         data_r = {
                             'score': final, 'rm_score': kc_m,
                             'ac': ac, 'pc': pc, 'eb': eb, 'gf': gf, 'pt': pt, 'pa': pa,
@@ -146,8 +188,8 @@ def show():
         else:
             df_ra_pag = paginate_dataframe(df_ra, page_size=10, key_prefix="risk_auto")
             for _, r in df_ra_pag.iterrows():
-                cli = ClienteDAO.get_by_id(r.get('cliente_id'))
-                with st.expander(f"🚗 {r['cliente']} | {r['marca']} {r['modelo']} | ${r['monto']:,.2f}"):
+                rif_str = str(r.get('cedula', '')).upper() if pd.notna(r.get('cedula')) else ''
+                with st.expander(f"{r['cliente'].upper()} | RIF: {rif_str} | {r.get('marca', '')} {r.get('modelo', '')} | ${r['monto']:,.2f}"):
                     st.markdown(f"#### {APP_ICONS['automotriz']} Evaluación de Capacidad de Pago", unsafe_allow_html=True)
                     st.markdown("**Resumen del Crédito:**")
                     ri1, ri2, ri3, ri4 = st.columns(4)
@@ -224,7 +266,10 @@ def show():
 
                     cov_a = st.text_area("Condiciones Especiales Post-Cierre", key=f"ra_cov_{r['id']}")
                     obs_ra = st.text_area("Observaciones de Riesgo", key=f"ra_obs_{r['id']}")
-                    if st.button("Firmar Riesgo", key=f"ra_f_{r['id']}"):
+                    bra_f, bra_dev, _ = st.columns([1.2, 1, 1.8])
+                    if bra_dev.button("↩️ Devolver", key=f"ra_dev_{r['id']}", width='stretch'):
+                        modal_devolver_expediente(r, 'auto')
+                    if bra_f.button("Firmar Riesgo", key=f"ra_f_{r['id']}", width='stretch'):
                         data_ra = {
                             'score': final_a, 'rm_score': kc_auto,
                             'ing': ing_a, 'gastos': gast_a, 'cuota': cuota_a,

@@ -7,6 +7,14 @@ from database.daos_sqlserver import (
     PlanPagoDAO, ExpedienteCorporativoDAO, ExpedienteAutomotrizDAO,
     GestionCobranzaDAO, PagoRecibidoDAO
 )
+from services.metrics_service import get_sidebar_metrics
+
+@st.dialog("✅ Pago Registrado", width="small")
+def modal_aviso_pago():
+    st.success(st.session_state['pago_success_msg'])
+    if st.button("Aceptar", use_container_width=True):
+        st.session_state['pago_success_msg'] = None
+        st.rerun()
 
 def show():
     page_header("collections", "Cobranzas & Aging Management",
@@ -14,6 +22,9 @@ def show():
                 "KFG Risk Architect · Cobranzas")
     hoy = datetime.now().date()
     hoy_s = hoy.strftime("%Y-%m-%d")
+
+    if st.session_state.get('pago_success_msg'):
+        modal_aviso_pago()
 
     # Cargar datos a través de DAOs
     with st.spinner("Analizando vencimientos y gestiones de cobro..."):
@@ -189,21 +200,33 @@ def show():
                             referencia_pago = st.text_input("Referencia / N° de transferencia",
                                                              key=f"ref_{tipo_exp}_{cr['id']}")
                             if st.button("💾 Registrar Amortización", key=f"mpag_{tipo_exp}_{cr['id']}"):
-                                monto_cuota = cuotas_list[sel_idx]['cuota']
-                                PlanPagoDAO.mark_as_paid(ids[sel_idx])
-                                PagoRecibidoDAO.create(
-                                    cr['id'], tipo_exp, fecha_pago_real.strftime("%Y-%m-%d"),
-                                    monto_cuota, referencia_pago
-                                )
-                                remaining_venc = df_cuotas[(df_cuotas['estado']=='PENDIENTE') &
-                                                            (df_cuotas['fecha_pago'] < hoy_s) &
-                                                            (df_cuotas['id'] != ids[sel_idx])]
-                                new_ec = 'Al día' if remaining_venc.empty else estado_cob
-                                if tipo_exp == 'corp':
-                                    ExpedienteCorporativoDAO.update_estado_cobranza(cr['id'], new_ec)
+                                if not referencia_pago.strip():
+                                    st.error("⚠️ Es obligatorio colocar la referencia o N° de transferencia para registrar el pago.")
                                 else:
-                                    ExpedienteAutomotrizDAO.update_estado_cobranza(cr['id'], new_ec)
-                                st.success("Amortización registrada."); st.rerun()
+                                    monto_cuota = cuotas_list[sel_idx]['cuota']
+                                    num_cuota = int(cuotas_list[sel_idx]['periodo'])
+                                    PlanPagoDAO.mark_as_paid(ids[sel_idx])
+                                    PagoRecibidoDAO.create(
+                                        cr['id'], tipo_exp, fecha_pago_real.strftime("%Y-%m-%d"),
+                                        monto_cuota, referencia_pago
+                                    )
+                                    remaining_venc = df_cuotas[(df_cuotas['estado']=='PENDIENTE') &
+                                                                (df_cuotas['fecha_pago'] < hoy_s) &
+                                                                (df_cuotas['id'] != ids[sel_idx])]
+                                    new_ec = 'Al día' if remaining_venc.empty else estado_cob
+                                    if tipo_exp == 'corp':
+                                        ExpedienteCorporativoDAO.update_estado_cobranza(cr['id'], new_ec)
+                                    else:
+                                        ExpedienteAutomotrizDAO.update_estado_cobranza(cr['id'], new_ec)
+                                    
+                                    st.session_state['pago_success_msg'] = f"✅ Pago de la cuota {num_cuota} registrado exitosamente."
+                                    get_sidebar_metrics.clear()
+                                    
+                                    ref_key = f"ref_{tipo_exp}_{cr['id']}"
+                                    if ref_key in st.session_state:
+                                        del st.session_state[ref_key]
+                                        
+                                    st.rerun()
 
                 with st_cob3:
                     with st.form(f"gest_{tipo_exp}_{cr['id']}"):
@@ -233,7 +256,9 @@ def show():
                                 ExpedienteCorporativoDAO.update_estado_cobranza(cr['id'], new_estado_g)
                             else:
                                 ExpedienteAutomotrizDAO.update_estado_cobranza(cr['id'], new_estado_g)
-                            st.success("Gestión registrada."); st.rerun()
+                            st.success("Gestión registrada.")
+                            get_sidebar_metrics.clear()
+                            st.rerun()
 
     with tab_cob_corp:
         _panel_cobranza(df_corp_ap2, 'corp', 'corporativos')

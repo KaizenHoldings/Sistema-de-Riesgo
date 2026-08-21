@@ -5,6 +5,7 @@ from database.db_core_sqlserver import init_db
 from database.daos_sqlserver import ExpedienteCorporativoDAO, ExpedienteAutomotrizDAO, PlanPagoDAO
 from utils import inyectar_css_kfg, get_base64_image
 from datetime import datetime
+from services.metrics_service import get_sidebar_metrics
 from PIL import Image
 
 img = Image.open("./public/imgs/logoKH.png")
@@ -47,33 +48,8 @@ else:
         
     # (Modal de solicitud antiguo eliminado, ahora es una vista completa)
 
-    # ── Contadores Optimizados (Caché de 30s) ──
-    @st.cache_data(ttl=30)
-    def get_sidebar_metrics():
+    # (La función get_sidebar_metrics ahora se importa de services.metrics_service)
 
-
-        # Cumplimiento: dictamen PENDIENTE y status_comp 0
-        n_comp = ExpedienteCorporativoDAO.count(dictamen='PENDIENTE', status_comp=0) + \
-                 ExpedienteAutomotrizDAO.count(dictamen='PENDIENTE', status_comp=0)
-        
-        # Legal: dictamen PENDIENTE y status_leg 0
-        n_leg = ExpedienteCorporativoDAO.count(dictamen='PENDIENTE', status_leg=0) + \
-                ExpedienteAutomotrizDAO.count(dictamen='PENDIENTE', status_leg=0)
-        
-        # Riesgo: dictamen PENDIENTE y status_riesgo 0
-        n_ries = ExpedienteCorporativoDAO.count(dictamen='PENDIENTE', status_riesgo=0) + \
-                 ExpedienteAutomotrizDAO.count(dictamen='PENDIENTE', status_riesgo=0)
-        
-        # Comité: dictamen PENDIENTE y todos los status aprobados (1)
-        n_comite = ExpedienteCorporativoDAO.count(dictamen='PENDIENTE', status_comp=1, status_leg=1, status_riesgo=1) + \
-                   ExpedienteAutomotrizDAO.count(dictamen='PENDIENTE', status_comp=1, status_leg=1, status_riesgo=1)
-        
-        # Cobranzas: Plan de pagos PENDIENTE con fecha vencida
-        hoy_str = datetime.now().strftime("%Y-%m-%d")
-        n_venc = PlanPagoDAO.count_vencidos(hoy_str)
-        
-        return n_comp, n_leg, n_ries, n_comite, n_venc
-    
     with st.spinner("Sincronizando indicadores..."):
         n_comp, n_leg, n_ries, n_comite, n_venc = get_sidebar_metrics()
     
@@ -87,11 +63,14 @@ else:
     def show_evaluations(): from views import evaluations; evaluations.show()
     def show_portfolio(): from views import portfolio; portfolio.show()
     def show_collections(): from views import collections; collections.show()
-    def show_onboarding(): from views import onboarding; onboarding.show()
+    def show_client_registration(): from views import client_registration; client_registration.show()
+    def show_client_list(): from views import client_list; client_list.show()
     def show_parameters(): from views import admin; admin.show()
     def show_users(): from views import users; users.show()
     def show_profile(): from views import profile; profile.show()
     def show_new_request(): from views import new_request; new_request.show()
+    def show_formulas_info(): from views import formulas_info; formulas_info.show()
+    def show_general_report(): from views import general_report; general_report.show()
 
     # Mapeo a las páginas originales exactas con sus contadores dinámicos
     p_inicio = st.Page(show_dashboard, title="Inicio", default=True)
@@ -101,31 +80,34 @@ else:
     p_comite = st.Page(show_evaluations, title=f"Comité & BI{cnt(n_comite)}")
     p_cobranza = st.Page(show_collections, title=f"Cobranzas{cnt(n_venc)}")
     p_cartera = st.Page(show_portfolio, title="Cartera")
-    p_clientes = st.Page(show_onboarding, title="Clientes")
+    p_registro_cliente = st.Page(show_client_registration, title="Registrar Cliente")
+    p_lista_clientes = st.Page(show_client_list, title="Directorio Clientes")
     p_parametros = st.Page(show_parameters, title="Parámetros")
     p_usuarios = st.Page(show_users, title="Usuarios")
     p_perfil = st.Page(show_profile, title="Mi Perfil")
     p_nueva_solicitud = st.Page(show_new_request, title="Nueva Solicitud")
+    p_formulas = st.Page(show_formulas_info, title="Info Fórmulas")
+    p_reporte = st.Page(show_general_report, title="Reporte General")
 
     # Recrear el diccionario exacto del monolito
     pages = {}
     if role == 'Compliance':
-        pages["Secciones"] = [p_inicio, p_comp, p_clientes, p_perfil]
+        pages["Secciones"] = [p_inicio, p_comp, p_registro_cliente, p_lista_clientes, p_perfil]
     elif role == 'Legal':
-        pages["Secciones"] = [p_inicio, p_leg, p_clientes, p_perfil]
+        pages["Secciones"] = [p_inicio, p_leg, p_registro_cliente, p_lista_clientes, p_perfil]
     elif role == 'Riesgo':
-        pages["Secciones"] = [p_inicio, p_riesgo, p_clientes, p_perfil]
+        pages["Secciones"] = [p_inicio, p_riesgo, p_registro_cliente, p_lista_clientes, p_perfil]
     elif role == 'Comité':
-        pages["Secciones"] = [p_inicio, p_comite, p_cartera, p_clientes, p_perfil]
+        pages["Secciones"] = [p_inicio, p_comite, p_cartera, p_reporte, p_registro_cliente, p_lista_clientes, p_perfil]
     elif role == 'Cobranzas':
         pages["Secciones"] = [p_inicio, p_cobranza, p_perfil]
     elif role == 'Superadmin':
         # Agrupado para que se vea más limpio, con las exactas 11 opciones
         pages["Evaluación"] = [p_inicio, p_comp, p_leg, p_riesgo, p_comite]
-        pages["Gestión"] = [p_cobranza, p_cartera, p_clientes]
-        pages["Configuración"] = [p_parametros, p_usuarios, p_perfil]
+        pages["Gestión"] = [p_cobranza, p_cartera, p_reporte, p_registro_cliente, p_lista_clientes]
+        pages["Configuración"] = [p_parametros, p_formulas, p_usuarios, p_perfil]
     else:
-        pages["Secciones"] = [p_inicio, p_clientes, p_perfil]
+        pages["Secciones"] = [p_inicio, p_registro_cliente, p_lista_clientes, p_perfil]
     
     # Agregar página de Nueva Solicitud a una sección interna para que switch_page funcione
     # pero no se renderice doble en el bucle manual
@@ -178,11 +160,11 @@ else:
                     del st.session_state[key]
             st.session_state['logout_token'] = True
             
-        st.button("🚪 Cerrar Sesión", width='stretch', on_click=handle_logout)
+        st.button("Cerrar Sesión", width='stretch', on_click=handle_logout)
         st.markdown("<br><div style='color:#94A3B8;font-size:0.75em;text-align:center'>Kaizen apps<br>Multipage Architecture</div>", unsafe_allow_html=True)
         
     if st.session_state.get('go_to_clientes'):
         st.session_state['go_to_clientes'] = False
-        st.switch_page(p_clientes)
+        st.switch_page(p_lista_clientes)
     
     pg.run()

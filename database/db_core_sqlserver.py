@@ -91,7 +91,8 @@ def init_db():
                 pt FLOAT DEFAULT 0, pa FLOAT DEFAULT 1,
                 dictamen NVARCHAR(50) DEFAULT 'PENDIENTE',
                 garantias_json NVARCHAR(MAX) DEFAULT '[]', custodia_fisica INT DEFAULT 0,
-                fecha_vencimiento_garantia NVARCHAR(50), ltv_ratio FLOAT DEFAULT 0)'''))
+                fecha_vencimiento_garantia NVARCHAR(50), ltv_ratio FLOAT DEFAULT 0,
+                eliminado BIT NOT NULL DEFAULT 0)'''))
 
         # Columnas incrementales
         columns_wf = [
@@ -104,7 +105,10 @@ def init_db():
             ("covenants", "NVARCHAR(MAX) DEFAULT ''"), ("plazo_meses", "INT DEFAULT 36"),
             ("cliente_id", "INT DEFAULT NULL"), ("plan_generado", "INT DEFAULT 0"),
             ("estado_cobranza", "NVARCHAR(50) DEFAULT 'Al día'"), ("tipo_producto", "NVARCHAR(50) DEFAULT 'Corporativo'"),
-            ("ingresos_mensuales", "FLOAT DEFAULT 0"), ("descripcion", "NVARCHAR(MAX) DEFAULT ''")
+            ("ingresos_mensuales", "FLOAT DEFAULT 0"), ("descripcion", "NVARCHAR(MAX) DEFAULT ''"),
+            ("obs_decision", "NVARCHAR(MAX) DEFAULT ''"),
+            ("devuelto_a", "NVARCHAR(50) DEFAULT ''"),
+            ("eliminado", "BIT NOT NULL DEFAULT 0")
         ]
         for col, dtype in columns_wf:
             if not column_exists('expedientes_wf', col):
@@ -147,7 +151,8 @@ def init_db():
                 dictamen NVARCHAR(50) DEFAULT 'PENDIENTE',
                 tasa_aprobada FLOAT DEFAULT 0,
                 aprobado_por NVARCHAR(255) DEFAULT '',
-                fecha_decision NVARCHAR(50) DEFAULT '')'''))
+                fecha_decision NVARCHAR(50) DEFAULT '',
+                eliminado BIT NOT NULL DEFAULT 0)'''))
 
         # Columnas incrementales
         columns_auto = [
@@ -155,11 +160,18 @@ def init_db():
             ("estado_cobranza", "NVARCHAR(50) DEFAULT 'Al día'"), ("tipo_producto", "NVARCHAR(50) DEFAULT 'Corporativo'"),
             ("vehiculo_placa", "NVARCHAR(20) DEFAULT ''"), ("seguro_empresa", "NVARCHAR(100) DEFAULT ''"),
             ("seguro_poliza", "NVARCHAR(100) DEFAULT ''"), ("seguro_vigencia", "NVARCHAR(50) DEFAULT ''"),
-            ("descripcion", "NVARCHAR(MAX) DEFAULT ''")
+            ("descripcion", "NVARCHAR(MAX) DEFAULT ''"),
+            ("obs_decision", "NVARCHAR(MAX) DEFAULT ''"),
+            ("devuelto_a", "NVARCHAR(50) DEFAULT ''"),
+            ("eliminado", "BIT NOT NULL DEFAULT 0")
         ]
         for col, dtype in columns_auto:
             if not column_exists('expedientes_auto', col):
                 conn.execute(text(f"ALTER TABLE expedientes_auto ADD {col} {dtype}"))
+
+        # Red de seguridad: ninguna fila debe quedar con eliminado NULL
+        for _t in ('expedientes_wf', 'expedientes_auto'):
+            conn.execute(text(f"UPDATE {_t} SET eliminado = 0 WHERE eliminado IS NULL"))
 
         # ── Clientes ──────────────────────────────────────────────
         if not table_exists('clientes'):
@@ -209,6 +221,16 @@ def init_db():
                 proxima_accion NVARCHAR(MAX) DEFAULT '',
                 fecha_proxima NVARCHAR(50) DEFAULT '',
                 obs NVARCHAR(MAX) DEFAULT '')'''))
+
+        # ── Pagos Recibidos ───────────────────────────────────────
+        if not table_exists('pagos_recibidos'):
+            conn.execute(text('''CREATE TABLE pagos_recibidos (
+                id INT IDENTITY(1,1) PRIMARY KEY,
+                expediente_id INT NOT NULL,
+                tipo_expediente NVARCHAR(50) NOT NULL,
+                fecha_pago NVARCHAR(50),
+                monto FLOAT DEFAULT 0,
+                referencia NVARCHAR(255) DEFAULT '')'''))
 
         # ── Usuarios ──────────────────────────────────────────────
         if not table_exists('usuarios'):
