@@ -18,6 +18,7 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 import type { EstadoAcceso } from "@/app/actions/estadoAcceso";
 import { BACKEND_ORIGIN } from "@/utils/backend";
@@ -81,8 +82,9 @@ export async function iniciarSesion(
   const almacen = await cookies();
   almacen.set(COOKIE_SESION, token, {
     httpOnly: true,
-    // En desarrollo se sirve por HTTP: exigir `secure` impediría guardarla.
-    secure: process.env.NODE_ENV === "production",
+    // En despliegues HTTP (como IP directa sin certificado SSL), `secure: true`
+    // hace que el navegador descarte la cookie. Se activa si COOKIE_SECURE="true".
+    secure: process.env.COOKIE_SECURE === "true",
     sameSite: "lax",
     path: "/",
     maxAge: DURACION_SEGUNDOS,
@@ -90,7 +92,7 @@ export async function iniciarSesion(
 
   // El marco se pinta en el servidor y muestra el usuario: hay que rehacerlo.
   revalidatePath("/", "layout");
-  return { error: null };
+  redirect("/dashboard");
 }
 
 /** Cierra la sesión borrando la cookie. */
