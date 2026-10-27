@@ -1,4 +1,26 @@
 services:
+  # ── Base de datos SQL Server 2022 ─────────────────────────────────────────────
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: kfg_risk_sqlserver
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-KfgRisk2026!Secure}"
+      MSSQL_PID: "Express"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD:-KfgRisk2026!Secure}\" -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    networks:
+      - kfg_network
+
   # ── Backend FastAPI (Python 3.11 + MS ODBC Driver 18) ─────────────────────────
   backend:
     build:
@@ -16,6 +38,9 @@ services:
     volumes:
       # Persistencia de documentos de clientes almacenados localmente
       - ./backend/clients:/app/clients
+    depends_on:
+      sqlserver:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 10s
@@ -45,30 +70,9 @@ services:
     networks:
       - kfg_network
 
-  # ── Base de datos SQL Server 2022 (Opcional) ─────────────────────────────────
-  # Si ya cuentas con un servidor SQL Server externo o en la red local, déjalo comentado.
-  # Si deseas levantar una base de datos nueva dentro del mismo Docker, descomenta este servicio
-  # y ajusta DATABASE_URL en backend/.env a:
-  # DATABASE_URL="sqlserver://sqlserver:1433;database=kfg_ecosystem;user=sa;password=TuPasswordSeguro123!;encrypt=true;trustServerCertificate=true;"
-  #
-  # sqlserver:
-  #   image: mcr.microsoft.com/mssql/server:2022-latest
-  #   container_name: kfg_risk_sqlserver
-  #   restart: unless-stopped
-  #   environment:
-  #     ACCEPT_EULA: "Y"
-  #     MSSQL_SA_PASSWORD: "TuPasswordSeguro123!"
-  #     MSSQL_PID: "Express"
-  #   ports:
-  #     - "1433:1433"
-  #   volumes:
-  #     - sqlserver_data:/var/opt/mssql
-  #   networks:
-  #     - kfg_network
-
 networks:
   kfg_network:
     driver: bridge
 
-# volumes:
-#   sqlserver_data:
+volumes:
+  sqlserver_data:
