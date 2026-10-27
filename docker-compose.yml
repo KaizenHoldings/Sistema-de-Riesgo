@@ -8,8 +8,8 @@ services:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-KfgRisk2026!Secure}"
       MSSQL_PID: "Express"
-    ports:
-      - "1433:1433"
+    #ports:
+     # - "1433:1433"
     volumes:
       - sqlserver_data:/var/opt/mssql
     healthcheck:
@@ -58,7 +58,7 @@ services:
     container_name: kfg_risk_frontend
     restart: unless-stopped
     ports:
-      - "4000:3000"
+      - "3030:3000"
     environment:
       # Dirección interna del backend en la red de Docker (BFF proxy)
       BACKEND_ORIGIN: http://backend:8000
