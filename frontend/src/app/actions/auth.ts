@@ -89,7 +89,7 @@ export async function iniciarSesion(
     path: "/",
     maxAge: DURACION_SEGUNDOS,
   });
-
+  console.log("test")
   // El marco se pinta en el servidor y muestra el usuario: hay que rehacerlo.
   revalidatePath("/", "layout");
   redirect("/dashboard");
