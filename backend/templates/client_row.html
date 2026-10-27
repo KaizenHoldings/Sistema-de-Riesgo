@@ -1,0 +1,18 @@
+{# Fila resumen del directorio de clientes. Sin detalle, sin documentos: el
+   perfil completo vive en su propia pagina. El boton "Ver Perfil" lo pinta la
+   vista con un widget nativo en la columna contigua. #}
+<div class="kfg-tpl-row">
+  <div class="kfg-tpl-row__main">
+    <span class="kfg-tpl-row__icon">{{ icono }}</span>
+    <span class="kfg-tpl-row__name">{{ nombre }}</span>
+    {{ badge|safe }}
+  </div>
+  <div class="kfg-tpl-row__meta">
+    <span><strong>{{ documento }}</strong></span>
+    <span>{{ tipo }}</span>
+    <span>Registrado: {{ fecha_registro or '—' }}</span>
+    {% if expedientes is not none %}
+    <span>Expedientes: <strong>{{ expedientes }}</strong></span>
+    {% endif %}
+  </div>
+</div>

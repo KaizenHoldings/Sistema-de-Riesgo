@@ -1,0 +1,24 @@
+{# Reporte de antigüedad de deuda. `fila.badge` llega ya renderizado por
+   status_badge.html, de ahí el filtro |safe. #}
+<table class="kfg-tpl-aging">
+  <thead>
+    <tr>
+      <th class="t-left">Bucket</th>
+      <th class="t-right">N° Cuotas</th>
+      <th class="t-right">Monto Total</th>
+      <th class="t-right">Prom. Días Atraso</th>
+      <th class="t-center">Nivel de Riesgo</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for fila in filas %}
+    <tr>
+      <td class="c-bucket">{{ fila.bucket }}</td>
+      <td class="t-right c-num">{{ fila.n }}</td>
+      <td class="t-right c-num">{{ fila.monto|moneda }}</td>
+      <td class="t-right c-soft">{{ fila.prom_dias }} días</td>
+      <td class="t-center">{{ fila.badge|safe }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>

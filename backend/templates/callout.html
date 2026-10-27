@@ -1,0 +1,7 @@
+{# Aviso lateral con borde de acento. `body` y `hint` pueden llegar como HTML. #}
+<div class="kfg-tpl-callout" style="background:{{ bg|default('#F8FAFC') }};border-left-color:{{ color|default('#1E3A8A') }}">
+  {% if title %}<span class="kfg-tpl-callout__title" style="color:{{ title_color|default(color)|default('#1E3A8A') }}">{{ title }}</span>{% endif %}
+  {% if title and body %}<br>{% endif %}
+  {% if body %}<span class="kfg-tpl-callout__body">{{ body }}</span>{% endif %}
+  {% if hint %}&nbsp;&nbsp;<span class="kfg-tpl-callout__hint">{{ hint }}</span>{% endif %}
+</div>

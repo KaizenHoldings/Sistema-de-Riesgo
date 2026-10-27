@@ -53,3 +53,9 @@ Desktop.ini
 
 # Documentos de clientes cargados (datos personales, no versionar)
 clients/
+!frontend/src/app/clients/
+!frontend/src/app/clients/**
+
+# frontend/ tiene su propio .gitignore (node_modules, .next, .env*); estas
+# reglas aplican al espacio de trabajo backend/, cuyas rutas cuelgan ahora de
+# esa carpeta y siguen casando porque los patrones no llevan barra inicial.

@@ -1,0 +1,6 @@
+{# Indicador de estado de un ítem del checklist KYC. `badge` es opcional y
+   llega ya renderizado. #}
+<div class="kfg-tpl-doc" style="color:{{ color }};font-size:0.85em;margin-bottom:6px">
+  <span>{{ texto }}</span>
+  {% if badge %}{{ badge|safe }}{% endif %}
+</div>

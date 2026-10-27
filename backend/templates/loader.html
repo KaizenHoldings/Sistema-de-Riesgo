@@ -1,0 +1,95 @@
+{# Indicador de carga institucional.
+   Clases con prefijo `kfg-loader-` y animaciones con nombre propio, para no
+   colisionar con inyectar_css_kfg() ni con las clases kfg-tpl-*.
+   Variables: `message` (texto opcional bajo el anillo). #}
+<style>
+@keyframes kfgLoaderGiro {
+    to { transform: rotate(360deg); }
+}
+@keyframes kfgLoaderPulso {
+    0%, 100% { opacity: .35; transform: scale(.82); }
+    50%      { opacity: 1;   transform: scale(1); }
+}
+@keyframes kfgLoaderEntrada {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.kfg-loader {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 18px;
+    margin: 6px 0 10px;
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+    border-left: 4px solid #1E3A8A;
+    background: linear-gradient(90deg, #F8FAFC 0%, #FFFFFF 60%);
+    box-shadow: 0 2px 10px rgba(11, 29, 78, .07);
+    animation: kfgLoaderEntrada .22s ease-out both;
+}
+
+/* Anillo: pista tenue y arco en el azul institucional */
+.kfg-loader__anillo {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 3px solid rgba(11, 29, 78, .12);
+    border-top-color: #0B1D4E;
+    border-right-color: #1E3A8A;
+    animation: kfgLoaderGiro .85s linear infinite;
+}
+
+.kfg-loader__texto {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+}
+.kfg-loader__mensaje {
+    color: #0B1D4E;
+    font-size: .92em;
+    font-weight: 600;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+/* Tres puntos que laten en secuencia, del navy al azul claro */
+.kfg-loader__puntos {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.kfg-loader__punto {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #1E3A8A;
+    animation: kfgLoaderPulso 1.05s ease-in-out infinite;
+}
+.kfg-loader__punto:nth-child(1) { background: #0B1D4E; animation-delay: 0s; }
+.kfg-loader__punto:nth-child(2) { background: #1E3A8A; animation-delay: .18s; }
+.kfg-loader__punto:nth-child(3) { background: #1D4ED8; animation-delay: .36s; }
+
+/* Sin animación si el usuario la ha desactivado en su sistema */
+@media (prefers-reduced-motion: reduce) {
+    .kfg-loader,
+    .kfg-loader__anillo,
+    .kfg-loader__punto { animation: none; }
+    .kfg-loader__anillo { border-top-color: #0B1D4E; }
+}
+</style>
+
+<div class="kfg-loader" role="status" aria-live="polite">
+  <div class="kfg-loader__anillo"></div>
+  <div class="kfg-loader__texto">
+    <span class="kfg-loader__mensaje">{{ message|default('Cargando...') }}</span>
+    <span class="kfg-loader__puntos">
+      <span class="kfg-loader__punto"></span>
+      <span class="kfg-loader__punto"></span>
+      <span class="kfg-loader__punto"></span>
+    </span>
+  </div>
+</div>

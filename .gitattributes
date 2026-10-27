@@ -1,0 +1,4 @@
+# Los guiones de arranque se ejecutan con bash. Si git los entrega con finales
+# de línea CRLF, el shebang llega como "#!/bin/bash\r" y el intérprete no se
+# encuentra: se fuerza LF para que funcionen en cualquier sistema.
+*.sh text eol=lf

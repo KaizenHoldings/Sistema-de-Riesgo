@@ -1,0 +1,20 @@
+{# Resumen de un expediente en Comité & BI. `badge` llega renderizado.
+   Los botones de acción los pinta la vista al lado, con widgets nativos. #}
+<div class="kfg-tpl-exp">
+  <div class="kfg-tpl-exp__title">
+    <span class="kfg-tpl-exp__client">{{ cliente }}</span>
+    {% if documento %}<span class="kfg-tpl-exp__amount">| {{ etiqueta_doc|default('RIF') }}: {{ documento }}</span>{% endif %}
+    {{ badge|safe }}
+    <span class="kfg-tpl-exp__amount">{{ moneda }} {{ monto|monto }}</span>
+  </div>
+
+  <div class="kfg-tpl-exp__meta">Creado: {{ fecha or '—' }}</div>
+  <div class="kfg-tpl-exp__desc"><strong>Descripción:</strong> {{ descripcion }}</div>
+  {% if vehiculo %}<div class="kfg-tpl-exp__meta">{{ icono_vehiculo|safe }} {{ vehiculo }}</div>{% endif %}
+
+  <div class="kfg-tpl-exp__stats">
+    <span>Firmas: C:{{ firma_comp }} L:{{ firma_leg }} R:{{ firma_riesgo }}</span>
+    <span>Score: <strong>{{ score }}</strong></span>
+    <span>{{ ratio_label }}: <strong>{{ ratio_valor }}</strong></span>
+  </div>
+</div>

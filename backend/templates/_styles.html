@@ -1,0 +1,264 @@
+{# Hoja de estilos de los componentes servidos por TemplateService.
+   Se inyecta una sola vez por ejecución de script y convive con
+   inyectar_css_kfg(): aquí solo viven clases propias con prefijo kfg-tpl,
+   nunca selectores sobre el DOM de Streamlit. #}
+<style>
+:root {
+    --kfg-navy: #0B1D4E;
+    --kfg-blue: #1E3A8A;
+    --kfg-blue-light: #1D4ED8;
+    --kfg-ink: #1E293B;
+    --kfg-muted: #64748B;
+    --kfg-line: #E2E8F0;
+    --kfg-surface: #FFFFFF;
+}
+
+.kfg-tpl-card,
+.kfg-tpl-grid,
+.kfg-tpl-badge,
+.kfg-tpl-callout,
+.kfg-tpl-doc,
+.kfg-tpl-progress,
+.kfg-tpl-aging {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* ── Tarjeta base ──────────────────────────────────────────────── */
+.kfg-tpl-card {
+    background: var(--kfg-surface);
+    border: 1px solid var(--kfg-line);
+    border-radius: 12px;
+    padding: 16px 18px;
+    box-shadow: 0 2px 8px rgba(11, 29, 78, 0.06);
+    transition: box-shadow .22s ease, transform .22s ease, border-color .22s ease;
+}
+.kfg-tpl-card:hover {
+    box-shadow: 0 8px 20px rgba(11, 29, 78, 0.12);
+    border-color: #C7D2FE;
+    transform: translateY(-1px);
+}
+.kfg-tpl-card__head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.kfg-tpl-card__icon {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.kfg-tpl-card__icon svg path,
+.kfg-tpl-card__icon svg g,
+.kfg-tpl-card__icon svg {
+    fill: var(--kfg-blue) !important;
+    stroke: var(--kfg-blue) !important;
+}
+.kfg-tpl-card__icon svg {
+    width: 28px !important;
+    height: 28px !important;
+}
+.kfg-tpl-card__icon svg [fill="none"] {
+    fill: none !important;
+}
+.kfg-tpl-card__title {
+    color: var(--kfg-navy);
+    font-weight: 700;
+    font-size: 0.96em;
+    line-height: 1.25;
+}
+.kfg-tpl-card__subtitle {
+    color: var(--kfg-muted);
+    font-size: 0.82em;
+    margin-top: 2px;
+}
+
+/* ── Rejilla de datos ──────────────────────────────────────────── */
+.kfg-tpl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 10px 18px;
+}
+.kfg-tpl-grid__item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 0;
+    border-bottom: 1px dashed #F1F5F9;
+}
+.kfg-tpl-grid__label {
+    color: var(--kfg-muted);
+    font-size: 0.76em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.kfg-tpl-grid__value {
+    color: var(--kfg-ink);
+    font-size: 0.92em;
+    font-weight: 600;
+    word-break: break-word;
+}
+
+/* ── Distintivos ───────────────────────────────────────────────── */
+.kfg-tpl-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 11px;
+    border-radius: 20px;
+    font-size: 0.75em;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    transition: filter .2s ease, transform .2s ease;
+}
+.kfg-tpl-badge:hover { filter: brightness(0.97); transform: translateY(-1px); }
+.kfg-tpl-badge__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+/* ── Aviso lateral ─────────────────────────────────────────────── */
+.kfg-tpl-callout {
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    margin: 8px 0;
+    font-size: 0.86em;
+    background: #F8FAFC;
+    border-left: 4px solid var(--kfg-blue);
+    transition: background .2s ease;
+}
+.kfg-tpl-callout:hover { background: #F1F5F9; }
+.kfg-tpl-callout__title { font-weight: 700; }
+.kfg-tpl-callout__body { color: var(--kfg-ink); }
+.kfg-tpl-callout__hint { color: #94A3B8; font-size: 0.88em; }
+
+/* ── Fila de documento ─────────────────────────────────────────── */
+.kfg-tpl-doc {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 34px;
+    padding: 2px 0;
+}
+.kfg-tpl-doc__name {
+    color: #334155;
+    font-size: 0.88em;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+.kfg-tpl-doc__note { font-size: 0.82em; margin-top: 3px; }
+
+/* ── Progreso KYC ──────────────────────────────────────────────── */
+.kfg-tpl-progress { margin: 14px 0; }
+.kfg-tpl-progress__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+}
+.kfg-tpl-progress__label { font-size: 0.85em; font-weight: 600; color: #475569; }
+.kfg-tpl-progress__value { font-size: 0.85em; font-weight: 700; color: var(--kfg-ink); }
+.kfg-tpl-progress__track {
+    width: 100%;
+    height: 10px;
+    background: var(--kfg-line);
+    border-radius: 10px;
+    overflow: hidden;
+}
+.kfg-tpl-progress__fill {
+    height: 100%;
+    border-radius: 10px;
+    background: linear-gradient(90deg, #10B981, #34D399);
+    transition: width .45s cubic-bezier(.4, 0, .2, 1);
+}
+
+/* ── Tabla de antigüedad ───────────────────────────────────────── */
+.kfg-tpl-aging {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88em;
+    background: var(--kfg-surface);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--kfg-line);
+}
+.kfg-tpl-aging th {
+    padding: 10px 16px;
+    color: var(--kfg-muted);
+    font-size: 0.76em;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 2px solid var(--kfg-line);
+    background: #F8FAFC;
+}
+.kfg-tpl-aging td {
+    padding: 10px 16px;
+    border-bottom: 1px solid #F1F5F9;
+}
+.kfg-tpl-aging tbody tr { transition: background .18s ease; }
+.kfg-tpl-aging tbody tr:hover { background: #F8FAFC; }
+.kfg-tpl-aging .t-left { text-align: left; }
+.kfg-tpl-aging .t-right { text-align: right; }
+.kfg-tpl-aging .t-center { text-align: center; }
+.kfg-tpl-aging .c-bucket { font-weight: 600; color: var(--kfg-ink); }
+.kfg-tpl-aging .c-num { color: var(--kfg-navy); font-weight: 700; }
+.kfg-tpl-aging .c-soft { color: var(--kfg-muted); }
+
+/* ── Fila del directorio de clientes ───────────────────────────── */
+.kfg-tpl-row {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 2px 0;
+}
+.kfg-tpl-row__main {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.kfg-tpl-row__icon { font-size: 1.05em; line-height: 1; }
+.kfg-tpl-row__name {
+    color: var(--kfg-navy);
+    font-weight: 700;
+    font-size: 0.98em;
+}
+.kfg-tpl-row__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    color: var(--kfg-muted);
+    font-size: 0.82em;
+}
+.kfg-tpl-row__meta strong { color: var(--kfg-ink); }
+
+/* ── Resumen de expediente ─────────────────────────────────────── */
+.kfg-tpl-exp__title {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+.kfg-tpl-exp__client { font-weight: 700; color: var(--kfg-ink); font-size: 1.0em; }
+.kfg-tpl-exp__amount { color: var(--kfg-muted); font-size: 0.85em; font-weight: 600; }
+.kfg-tpl-exp__meta { color: var(--kfg-muted); font-size: 0.83em; line-height: 1.55; }
+.kfg-tpl-exp__desc { color: #334155; font-size: 0.85em; font-style: italic; }
+.kfg-tpl-exp__stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    color: #475569;
+    font-size: 0.83em;
+    margin-top: 2px;
+}
+.kfg-tpl-exp__stats strong { color: var(--kfg-navy); }
+</style>

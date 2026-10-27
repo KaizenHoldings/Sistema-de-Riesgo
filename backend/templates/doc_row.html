@@ -1,0 +1,9 @@
+{# Fila de un archivo del repositorio: nombre y, si procede, aviso de desfase.
+   El distintivo de estado y el botón de descarga los coloca la vista en sus
+   propias columnas para conservar la interactividad nativa. #}
+<div class="kfg-tpl-doc">
+  <span class="kfg-tpl-doc__name">{{ nombre }}</span>
+</div>
+{% if nota %}
+<div class="kfg-tpl-doc__note" style="color:{{ nota_color|default('#B45309') }}">{{ nota }}</div>
+{% endif %}

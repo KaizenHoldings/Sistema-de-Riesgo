@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+/**
+ * Paleta institucional Kaizen.
+ *
+ * Los tres azules son los mismos del degradado de la barra lateral de la
+ * interfaz de Streamlit, y el lienzo gris es el fondo de su área principal: las
+ * dos interfaces se ven como una sola mientras conviven. La aplicación se pinta
+ * siempre en claro, igual que la actual, así que no hay variante oscura.
+ */
+@theme {
+  --color-kaizen-900: #0b1d4e;
+  --color-kaizen-800: #1e3a8a;
+  --color-kaizen-600: #1d4ed8;
+  --color-kaizen-100: #dbe4f7;
+
+  --color-lienzo: #f0f2f5;
+  --color-tinta: #111827;
+  --color-tinta-suave: #4b5563;
+  --color-borde: #e2e6ee;
+
+  /* Semáforo: fondo tenue y trazo saturado para cada estado. */
+  --color-verde-fondo: #dcfce7;
+  --color-verde-trazo: #15803d;
+  --color-ambar-fondo: #fef3c7;
+  --color-ambar-trazo: #b45309;
+  --color-rojo-fondo: #fee2e2;
+  --color-rojo-trazo: #b91c1c;
+  --color-neutro-fondo: #e8ebf1;
+  --color-neutro-trazo: #475569;
+
+  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-lienzo);
+  color: var(--color-tinta);
+  font-family: var(--font-sans);
+}
+
+/* Barra de desplazamiento discreta dentro de las tablas anchas. */
+.scroll-fino::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.scroll-fino::-webkit-scrollbar-thumb {
+  background-color: #c7cddb;
+  border-radius: 9999px;
+}
+
+/**
+ * Texto oscuro en todos los campos de entrada.
+ *
+ * Regla heredada de la interfaz anterior y conservada a propósito: sin ella,
+ * algunos navegadores y el autorrelleno pintan el texto en blanco sobre el fondo
+ * blanco del campo y el dato escrito queda invisible. `-webkit-text-fill-color`
+ * es la mitad que hace falta en WebKit, donde `color` por sí solo no basta.
+ */
+input,
+select,
+textarea {
+  color: var(--color-tinta);
+  -webkit-text-fill-color: var(--color-tinta);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-tinta-suave);
+  -webkit-text-fill-color: var(--color-tinta-suave);
+  opacity: 1;
+}
+
+/* El autorrelleno de Chrome reescribe el fondo y el color: se neutraliza. */
+input:-webkit-autofill,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-tinta);
+  box-shadow: 0 0 0 1000px #ffffff inset;
+}

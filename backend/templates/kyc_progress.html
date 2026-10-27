@@ -1,0 +1,10 @@
+{# Barra de avance del checklist KYC. #}
+<div class="kfg-tpl-progress">
+  <div class="kfg-tpl-progress__head">
+    <span class="kfg-tpl-progress__label">{{ label|default('Progreso KYC') }}</span>
+    <span class="kfg-tpl-progress__value">{{ completados }}/{{ total }} ({{ pct }}%)</span>
+  </div>
+  <div class="kfg-tpl-progress__track">
+    <div class="kfg-tpl-progress__fill" style="width:{{ pct }}%"></div>
+  </div>
+</div>

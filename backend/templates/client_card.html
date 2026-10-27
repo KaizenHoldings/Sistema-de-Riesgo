@@ -1,0 +1,16 @@
+{# Ficha de datos del cliente. Solo presentación: los controles (casillas del
+   checklist, cargas, botones) los aporta la vista con widgets nativos. #}
+<div class="kfg-tpl-grid">
+  {% for campo in campos %}
+  <div class="kfg-tpl-grid__item">
+    <span class="kfg-tpl-grid__label">{{ campo.label }}</span>
+    <span class="kfg-tpl-grid__value">{{ campo.valor or '—' }}</span>
+  </div>
+  {% endfor %}
+  {% if representante %}
+  <div class="kfg-tpl-grid__item">
+    <span class="kfg-tpl-grid__label">Representante Legal</span>
+    <span class="kfg-tpl-grid__value">{{ representante.nombre }}{% if representante.cedula %} ({{ representante.cedula }}){% endif %}</span>
+  </div>
+  {% endif %}
+</div>
