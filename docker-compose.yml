@@ -29,7 +29,7 @@ services:
     container_name: kfg_risk_backend
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "9000:8000"
     env_file:
       - ./backend/.env
     environment:
@@ -58,7 +58,7 @@ services:
     container_name: kfg_risk_frontend
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "4000:3000"
     environment:
       # Dirección interna del backend en la red de Docker (BFF proxy)
       BACKEND_ORIGIN: http://backend:8000
