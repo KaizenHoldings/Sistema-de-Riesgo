@@ -1,0 +1,9 @@
+.git
+.gitignore
+.streamlit
+*.pyc
+__pycache__
+node_modules
+.next
+scratch
+newversion
