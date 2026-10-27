@@ -1,0 +1,74 @@
+services:
+  # ── Backend FastAPI (Python 3.11 + MS ODBC Driver 18) ─────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kfg_risk_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      # Asegurar ruta Linux para almacenamiento en contenedor (montado en /app/clients)
+      KFG_BASE_STORAGE_PATH: /app
+    volumes:
+      # Persistencia de documentos de clientes almacenados localmente
+      - ./backend/clients:/app/clients
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - kfg_network
+
+  # ── Frontend Next.js (Standalone) ─────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: kfg_risk_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Dirección interna del backend en la red de Docker (BFF proxy)
+      BACKEND_ORIGIN: http://backend:8000
+      NODE_ENV: production
+      PORT: "3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - kfg_network
+
+  # ── Base de datos SQL Server 2022 (Opcional) ─────────────────────────────────
+  # Si ya cuentas con un servidor SQL Server externo o en la red local, déjalo comentado.
+  # Si deseas levantar una base de datos nueva dentro del mismo Docker, descomenta este servicio
+  # y ajusta DATABASE_URL en backend/.env a:
+  # DATABASE_URL="sqlserver://sqlserver:1433;database=kfg_ecosystem;user=sa;password=TuPasswordSeguro123!;encrypt=true;trustServerCertificate=true;"
+  #
+  # sqlserver:
+  #   image: mcr.microsoft.com/mssql/server:2022-latest
+  #   container_name: kfg_risk_sqlserver
+  #   restart: unless-stopped
+  #   environment:
+  #     ACCEPT_EULA: "Y"
+  #     MSSQL_SA_PASSWORD: "TuPasswordSeguro123!"
+  #     MSSQL_PID: "Express"
+  #   ports:
+  #     - "1433:1433"
+  #   volumes:
+  #     - sqlserver_data:/var/opt/mssql
+  #   networks:
+  #     - kfg_network
+
+networks:
+  kfg_network:
+    driver: bridge
+
+# volumes:
+#   sqlserver_data:

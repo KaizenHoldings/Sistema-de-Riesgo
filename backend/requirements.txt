@@ -1,0 +1,25 @@
+# Backend FastAPI de KFG Risk Architect.
+# La interfaz vive en frontend/ (Next.js) y no requiere nada de aquí.
+
+# Servicio
+fastapi
+uvicorn[standard]
+gunicorn
+pydantic>=2
+python-multipart
+python-dotenv
+httpx          # cliente de fastapi.testclient
+
+# Datos
+SQLAlchemy
+pyodbc
+
+# Seguridad
+PyJWT
+bcrypt
+
+# Documentos e integraciones
+fpdf==1.7.2    # generación de los PDF de expediente (services/document_service)
+pandas==2.2.0  # services/document_service
+Jinja2         # services/template_service
+requests       # services/sharepoint_service
