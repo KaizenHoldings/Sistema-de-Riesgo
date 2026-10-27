@@ -191,6 +191,7 @@ def init_db():
             if not column_exists('expedientes_wf', col):
                 conn.execute(text(f"ALTER TABLE expedientes_wf ADD {col} {dtype}"))
 
+        print("[SQL Server] Creando base de datos inicial...")
         # ── Expedientes Automotrices ──────────────────────────────
         if not table_exists('expedientes_auto'):
             conn.execute(text('''CREATE TABLE expedientes_auto (
