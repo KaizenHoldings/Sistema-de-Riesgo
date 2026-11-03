@@ -65,3 +65,21 @@ export async function cambiarContrasena(
   );
   return usuario;
 }
+
+export function editarUsuario(
+  usuario: string,
+  rol: string,
+  contrasena?: string,
+): Promise<UsuarioCuenta> {
+  return apiClient.put<UsuarioCuenta>(
+    `/api/v1/usuarios/${encodeURIComponent(usuario)}`,
+    { rol, contrasena: contrasena ? contrasena : null },
+  );
+}
+
+export async function eliminarUsuario(usuario: string): Promise<string> {
+  await apiClient.delete<void>(
+    `/api/v1/usuarios/${encodeURIComponent(usuario)}`,
+  );
+  return usuario;
+}

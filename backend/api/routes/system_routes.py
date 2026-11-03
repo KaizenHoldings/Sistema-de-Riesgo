@@ -46,6 +46,13 @@ class CambioContrasena(BaseModel):
     contrasena: str = Field(..., min_length=4)
 
 
+class EdicionUsuario(BaseModel):
+    """Edición del rol y opcionalmente la contraseña de una cuenta."""
+
+    rol: str
+    contrasena: str | None = None
+
+
 # ── Parámetros del motor ──────────────────────────────────────────────
 @router.get("/config/parametros", response_model=list[ConfigParametro],
             summary="Parámetros del motor de scoring")
@@ -125,4 +132,56 @@ def cambiar_contrasena(usuario: str, datos: CambioContrasena,
         raise HTTPException(status_code=404,
                             detail=f"No existe la cuenta {usuario}.")
     UsuarioDAO.update_password(usuario, datos.contrasena, session=db)
+    db.commit()
+
+
+@router.put("/usuarios/{usuario}", response_model=Usuario, response_model_by_alias=False,
+            summary="Actualiza el rol y opcionalmente la contraseña de una cuenta")
+def editar_usuario(usuario: str, datos: EdicionUsuario,
+                   db: Session = Depends(get_db),
+                   actual: dict = Depends(solo_superadmin)) -> dict:
+    existentes = {f["Usuario"]: f["Rol"] for f in UsuarioDAO.get_all(session=db)}
+    if usuario not in existentes:
+        raise HTTPException(status_code=404,
+                            detail=f"No existe la cuenta {usuario}.")
+    if datos.rol not in ROLES:
+        raise HTTPException(status_code=422,
+                            detail="Rol no reconocido: " + datos.rol)
+
+    if existentes[usuario] == "Superadmin" and datos.rol != "Superadmin":
+        total_superadmins = sum(1 for rol in existentes.values() if rol == "Superadmin")
+        if total_superadmins <= 1:
+            raise HTTPException(status_code=400,
+                                detail="No es posible quitar el rol Superadmin a la única cuenta administradora.")
+
+    UsuarioDAO.update_role(usuario, datos.rol, session=db)
+    if datos.contrasena:
+        if len(datos.contrasena) < 4:
+            raise HTTPException(status_code=422,
+                                detail="La contraseña debe tener al menos 4 caracteres.")
+        UsuarioDAO.update_password(usuario, datos.contrasena, session=db)
+
+    db.commit()
+    return {"usuario": usuario, "rol": datos.rol}
+
+
+@router.delete("/usuarios/{usuario}", status_code=status.HTTP_204_NO_CONTENT,
+               summary="Elimina una cuenta de acceso")
+def eliminar_usuario(usuario: str, db: Session = Depends(get_db),
+                     actual: dict = Depends(solo_superadmin)) -> None:
+    existentes = {f["Usuario"]: f["Rol"] for f in UsuarioDAO.get_all(session=db)}
+    if usuario not in existentes:
+        raise HTTPException(status_code=404,
+                            detail=f"No existe la cuenta {usuario}.")
+    if actual.get("user") == usuario:
+        raise HTTPException(status_code=400,
+                            detail="No puedes eliminar tu propia cuenta en sesión activa.")
+
+    if existentes[usuario] == "Superadmin":
+        total_superadmins = sum(1 for rol in existentes.values() if rol == "Superadmin")
+        if total_superadmins <= 1:
+            raise HTTPException(status_code=400,
+                                detail="No es posible eliminar la única cuenta Superadmin del sistema.")
+
+    UsuarioDAO.delete(usuario, session=db)
     db.commit()

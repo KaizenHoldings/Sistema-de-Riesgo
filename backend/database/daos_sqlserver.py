@@ -249,6 +249,14 @@ class UsuarioDAO:
         db_action("UPDATE usuarios SET [password] = :p WHERE [user] = :u", {"p": hashed_password, "u": user}, session=session)
 
     @staticmethod
+    def update_role(user, role, session=None):
+        db_action("UPDATE usuarios SET [role] = :r WHERE [user] = :u", {"r": role, "u": user}, session=session)
+
+    @staticmethod
+    def delete(user, session=None):
+        db_action("DELETE FROM usuarios WHERE [user] = :u", {"u": user}, session=session)
+
+    @staticmethod
     def get_all(session=None):
         """Usuarios como lista de diccionarios con las claves Usuario y Rol."""
         with sesion_activa(session) as s:

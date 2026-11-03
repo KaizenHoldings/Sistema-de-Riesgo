@@ -13,7 +13,7 @@
  */
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
 import { EncabezadoPagina } from "@/components/layout/MarcoApp";
 import { Alerta } from "@/components/ui/Alerta";
@@ -26,6 +26,8 @@ import { useAvisos } from "@/components/ui/Toast";
 import { useAccion } from "@/hooks/useAccion";
 import {
   cambiarContrasena,
+  editarUsuario,
+  eliminarUsuario,
   guardarParametros,
   guardarUsuario,
   useParametros,
@@ -314,26 +316,15 @@ function PanelUsuarios() {
   const { notificar } = useAvisos();
   const [alta, setAlta] = useState(false);
   const [cuenta, setCuenta] = useState<UsuarioCuenta | null>(null);
+  const [edicion, setEdicion] = useState<UsuarioCuenta | null>(null);
+  const [eliminacion, setEliminacion] = useState<UsuarioCuenta | null>(null);
   const [pagina, setPagina] = useState(1);
 
   const columnas: Array<Columna<UsuarioCuenta>> = [
     {
-      clave: "accion",
-      encabezado: "",
-      celda: (u) => (
-        <button
-          type="button"
-          onClick={() => setCuenta(u)}
-          className="rounded-lg border border-borde px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition hover:border-kaizen-600 hover:text-kaizen-600"
-        >
-          Cambiar contraseña
-        </button>
-      ),
-    },
-    {
       clave: "usuario",
       encabezado: "Cuenta",
-      anchoMinimo: "18rem",
+      anchoMinimo: "16rem",
       celda: (u) => (
         <span className="font-semibold text-kaizen-900">{u.usuario}</span>
       ),
@@ -342,6 +333,35 @@ function PanelUsuarios() {
       clave: "rol",
       encabezado: "Rol",
       celda: (u) => <Insignia tono="neutro" texto={textoOGuion(u.rol)} />,
+    },
+    {
+      clave: "accion",
+      encabezado: "Acciones",
+      celda: (u) => (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setEdicion(u)}
+            className="rounded-lg border border-borde px-2.5 py-1 text-xs font-semibold whitespace-nowrap transition hover:border-kaizen-600 hover:text-kaizen-600"
+          >
+            Editar
+          </button>
+          <button
+            type="button"
+            onClick={() => setCuenta(u)}
+            className="rounded-lg border border-borde px-2.5 py-1 text-xs font-semibold whitespace-nowrap transition hover:border-kaizen-600 hover:text-kaizen-600"
+          >
+            Contraseña
+          </button>
+          <button
+            type="button"
+            onClick={() => setEliminacion(u)}
+            className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-600 whitespace-nowrap transition hover:bg-red-50 hover:border-red-400"
+          >
+            Eliminar
+          </button>
+        </div>
+      ),
     },
   ];
 
@@ -390,12 +410,30 @@ function PanelUsuarios() {
         }}
       />
 
+      <ModalEditarUsuario
+        cuenta={edicion}
+        alCerrar={() => setEdicion(null)}
+        alGuardar={() => {
+          notificar("exito", "Cuenta actualizada", "Se actualizaron los datos del usuario.");
+          recargar();
+        }}
+      />
+
       <ModalContrasena
         cuenta={cuenta}
         alCerrar={() => setCuenta(null)}
         alGuardar={(usuario) =>
           notificar("exito", "Contraseña actualizada", `Se restableció la de ${usuario}.`)
         }
+      />
+
+      <ModalEliminarUsuario
+        cuenta={eliminacion}
+        alCerrar={() => setEliminacion(null)}
+        alEliminar={() => {
+          notificar("exito", "Cuenta eliminada", "Se eliminó la cuenta correctamente.");
+          recargar();
+        }}
       />
     </section>
   );
@@ -565,6 +603,173 @@ function ModalContrasena({
             className={`mt-1.5 ${CAMPO}`}
           />
         </label>
+
+        {accion.error && <Alerta error={accion.error} />}
+      </div>
+    </Modal>
+  );
+}
+
+function ModalEditarUsuario({
+  cuenta,
+  alCerrar,
+  alGuardar,
+}: {
+  cuenta: UsuarioCuenta | null;
+  alCerrar: () => void;
+  alGuardar: () => void;
+}) {
+  const [rol, setRol] = useState<string>(ROLES[0]);
+  const [contrasena, setContrasena] = useState("");
+
+  useEffect(() => {
+    if (cuenta) {
+      setRol(
+        cuenta.rol && (ROLES as readonly string[]).includes(cuenta.rol)
+          ? cuenta.rol
+          : ROLES[0],
+      );
+      setContrasena("");
+    }
+  }, [cuenta]);
+
+  const accion = useAccion(() =>
+    editarUsuario(cuenta?.usuario ?? "", rol, contrasena.trim() || undefined),
+  );
+
+  const cerrar = () => {
+    accion.limpiarError();
+    setContrasena("");
+    alCerrar();
+  };
+
+  const enviar = async () => {
+    if (await accion.ejecutar()) {
+      alGuardar();
+      cerrar();
+    }
+  };
+
+  return (
+    <Modal
+      abierto={cuenta !== null}
+      titulo="Editar cuenta de acceso"
+      descripcion={cuenta ? `Modificando la cuenta ${cuenta.usuario}` : undefined}
+      alCerrar={cerrar}
+      pie={
+        <>
+          <button type="button" className={BOTON.neutro} onClick={cerrar}>
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className={BOTON.primario}
+            disabled={accion.enviando}
+            onClick={enviar}
+          >
+            {accion.enviando && <Girador />}
+            Guardar cambios
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <div>
+          <span className="text-xs font-semibold tracking-wide text-tinta-suave uppercase">
+            Usuario
+          </span>
+          <p className="mt-1 font-semibold text-kaizen-900">{cuenta?.usuario}</p>
+        </div>
+
+        <label className="block">
+          <span className="text-xs font-semibold tracking-wide text-tinta-suave uppercase">
+            Rol
+          </span>
+          <select
+            value={rol}
+            onChange={(evento) => setRol(evento.target.value)}
+            className={`mt-1.5 ${CAMPO}`}
+          >
+            {ROLES.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="text-xs font-semibold tracking-wide text-tinta-suave uppercase">
+            Nueva contraseña (opcional)
+          </span>
+          <input
+            type="password"
+            autoComplete="new-password"
+            placeholder="Dejar en blanco para mantener la actual"
+            value={contrasena}
+            onChange={(evento) => setContrasena(evento.target.value)}
+            className={`mt-1.5 ${CAMPO}`}
+          />
+        </label>
+
+        {accion.error && <Alerta error={accion.error} />}
+      </div>
+    </Modal>
+  );
+}
+
+function ModalEliminarUsuario({
+  cuenta,
+  alCerrar,
+  alEliminar,
+}: {
+  cuenta: UsuarioCuenta | null;
+  alCerrar: () => void;
+  alEliminar: () => void;
+}) {
+  const accion = useAccion(() => eliminarUsuario(cuenta?.usuario ?? ""));
+
+  const cerrar = () => {
+    accion.limpiarError();
+    alCerrar();
+  };
+
+  const confirmar = async () => {
+    if (await accion.ejecutar()) {
+      alEliminar();
+      cerrar();
+    }
+  };
+
+  return (
+    <Modal
+      abierto={cuenta !== null}
+      titulo="Eliminar cuenta de acceso"
+      descripcion="Esta acción no se puede deshacer."
+      alCerrar={cerrar}
+      pie={
+        <>
+          <button type="button" className={BOTON.neutro} onClick={cerrar}>
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className={BOTON.peligro}
+            disabled={accion.enviando}
+            onClick={confirmar}
+          >
+            {accion.enviando && <Girador />}
+            Eliminar cuenta
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <p className="text-sm text-tinta">
+          ¿Estás seguro de que deseas eliminar permanentemente la cuenta de{" "}
+          <strong className="text-kaizen-900">{cuenta?.usuario}</strong> (Rol:{" "}
+          <span className="font-semibold">{cuenta?.rol}</span>)?
+        </p>
 
         {accion.error && <Alerta error={accion.error} />}
       </div>
