@@ -130,9 +130,9 @@ def sesion_activa(session=None):
         s.close()
 
 
-def db_action(query, params=()):
+def db_action(query, params=(), session=None):
     """Ejecuta una consulta SQL genérica que requiere commit."""
-    with sesion_activa() as s:
+    with sesion_activa(session=session) as s:
         s.execute(text(query), params or {})
 
 
